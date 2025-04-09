@@ -12,7 +12,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(reticulate)
 library(readxl)
+library(reshape2)
+library(lme4)
+library(tidyverse)
+```
 
+```{r}
 # Load the Excel file
 df <- read_excel("wordlist.xlsx")
 
@@ -108,5 +113,92 @@ en <- read.csv("similarity_csvs/cos_english.csv", row.names = 1)
 es <- read.csv("similarity_csvs/cos_spanish.csv")
 ko <- read.csv("similarity_csvs/cos_korean.csv", row.names = 1)
 ja <- read.csv("similarity_csvs/cos_japanese.csv")
+```
+
+```{r}
+# Load the wordlist
+wordlist <- read_xlsx("wordlist.xlsx")
+wordlist <- wordlist[, c("language", "word only", "emotion group")]
+colnames(wordlist) <- c("language", "word", "group")
+
+# Get the list of cosine similarity CSVs
+file_list <- list.files("similarity_csvs", pattern = "^cos_.*\\.csv$", full.names = TRUE)
+
+# Loop through each similarity matrix
+for (file in file_list) {
+  tryCatch({
+    language <- sub("cos_(.*)\\.csv", "\\1", basename(file))
+    message(paste("Processing:", language))
+
+    # Load matrix with first column as 'word', NOT row names
+    data <- read.csv(file, check.names = FALSE)
+    colnames(data)[1] <- "word"  # Make sure first column is named 'word'
+
+    # Melt into long format
+    data_long <- melt(data, id.vars = "word", variable.name = "word2", value.name = "cosine")
+    colnames(data_long)[1] <- "word1"
+
+    # Filter wordlist for current language
+    roots <- wordlist[wordlist$language == language, c("word", "group")]
+
+    # Merge in group labels for both words
+    data_merge <- merge(data_long, roots, by.x = "word1", by.y = "word")
+    data_merge <- merge(data_merge, roots, by.x = "word2", by.y = "word")
+    colnames(data_merge)[4:5] <- c("group1", "group2")
+
+    # Label comparisons
+    data_merge$comparison <- paste(data_merge$group1, "vs", data_merge$group2)
+    data_merge$match <- ifelse(
+      data_merge$group1 == data_merge$group2, "matched",
+      ifelse(
+        data_merge$comparison %in% c("sorriness vs gratitude", "gratitude vs sorriness",
+                                     "gratitude vs indebtedness", "indebtedness vs gratitude",
+                                     "sorriness vs indebtedness", "indebtedness vs sorriness"),
+        "unmatched", "random"
+      )
+    )
+
+    # Remove duplicate pairs (e.g., A+B == B+A)
+    data_merge$merged_words <- apply(data_merge[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+    data_merge <- data_merge[!duplicated(data_merge$merged_words), ]
+
+    data_merge$match <- factor(data_merge$match, levels = c("unmatched", "matched", "random"))
+
+    # Define comparisons of interest
+    comparisons <- list(
+      gratitude_indebtedness = c("gratitude vs gratitude", "indebtedness vs indebtedness", "gratitude vs indebtedness"),
+      sorriness_indebtedness = c("sorriness vs sorriness", "indebtedness vs indebtedness", "sorriness vs indebtedness"),
+      sorriness_gratitude = c("sorriness vs sorriness", "gratitude vs gratitude", "sorriness vs gratitude")
+    )
+
+    for (comp_name in names(comparisons)) {
+      comp_data <- data_merge[data_merge$comparison %in% comparisons[[comp_name]], ]
+
+      if (nrow(comp_data) > 0) {
+        model <- lmer(cosine ~ match + (1 | group1) + (1 | group2), data = comp_data)
+        beta <- fixef(model)["matchmatched"]
+        d <- beta / sigma(model)
+
+        # Save model summary
+        sink(paste0("model_summary_", language, "_", comp_name, ".txt"))
+        cat("Mixed Model Summary:\n")
+        print(summary(model))
+        cat("\nCohen's d (matched vs unmatched):\n")
+        print(d)
+        sink()
+
+        # Plot
+        p <- ggplot(comp_data, aes(x = match, y = cosine)) +
+          geom_violin(fill = "#56B4E9", trim = FALSE) +
+          theme_classic() +
+          ggtitle(paste("Cosine Similarity:", comp_name, "-", language))
+        ggsave(paste0("cosine_similarity_", language, "_", comp_name, ".png"), plot = p)
+      }
+    }
+
+  }, error = function(e) {
+    message(paste("Error in", file, ":", e$message))
+  })
+}
 ```
 
