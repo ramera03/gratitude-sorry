@@ -1,0 +1,3222 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-08-09"
+---
+
+### issue: thank1, thank2 ...? why? For now, I just made the code to ignore such duplicates in readline 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+if(!require(haven)){install.packages('haven')}
+library(haven)
+if(!require(dplyr)){install.packages('dplyr')}
+library(dplyr)
+if(!require(tidyr)){install.packages('tidyr')}
+library(tidyr)
+if(!require(psych)){install.packages('psych')}
+library(psych)
+if(!require(bruceR)){install.packages('bruceR')}
+library(bruceR)
+if(!require(cluster)){install.packages("cluster")}
+library(cluster)
+if(!require(dplyr)){install.packages("dplyr")}
+library(dplyr)
+if(!require(fpc)){install.packages("fpc")}
+library(fpc)
+if(!require(ggplot2)){install.packages("ggplot2")}
+library(ggplot2)
+if(!require(patchwork)){install.packages("patchwork")}
+library(patchwork)
+if(!require(cowplot)){install.packages("cowplot")}
+library(cowplot)
+if(!require(httr)){install.packages("httr")}
+library(httr)
+if(!require(jsonlite)){install.packages("jsonlite")}
+library(jsonlite)
+if(!require(lsa)){install.packages("lsa")}
+library(lsa)
+if(!require(lme4)){install.packages("lme4")}
+library(lme4)
+if(!require(
+  lmerTest)){install.packages("lmerTest")}
+library(lmerTest)
+if(!require(reticulate)){install.packages("reticulate")}
+library(reticulate)
+if(!require(robumeta)){install.packages("robumeta")}
+library(robumeta)
+if(!require(reshape2)){install.packages("reshape2")}
+library(reshape2)
+if(!require(rstudioapi)){install.packages("rstudioapi")}
+library(rstudioapi)
+if(!require(Rtsne)){install.packages("Rtsne")}
+library(Rtsne)
+if(!require(tidyverse)){install.packages("tidyverse")}
+library(tidyverse)
+if(!require(umap)){install.packages("umap")}
+library(umap)
+if(!require(hunspell)){install.packages("hunspell")}
+library(hunspell)
+if(!require(irr)){install.packages("irr")}
+library(irr)
+if(!require(tm)){install.packages("tm")}
+library(tm)
+if(!require(data.table)){install.packages("data.table")}
+library(data.table)
+if(!require(parallel)){install.packages("parallel")}
+library(parallel)
+if(!require(stringr)){install.packages("stringr")}
+library(stringr)
+if(!require(wordcloud2)){install.packages("wordcloud2")}
+library(wordcloud2)
+if(!require(corrplot)){install.packages("corrplot")}
+library(corrplot)
+if(!require(dbscan)){install.packages("dbscan")}
+library(dbscan)
+if(!require(foreach)){install.packages("foreach")}
+library(foreach)
+if(!require(doParallel)){install.packages("doParallel")}
+library(doParallel)
+if(!require(readr)){install.packages("readr")}
+library(readr)
+if(!require(ggrepel)){install.packages("ggrepel")}
+library(ggrepel)
+library(rstudioapi)
+```
+
+```{r}
+library(dplyr)
+wordlist <- readxl::read_xlsx("~/Data/Gratitude_Indebtedness Wordlist - 241017.xlsx")
+```
+
+
+```{r}
+# Load required packages
+library(parallel)
+library(foreach)
+library(doParallel)
+library(lsa)  # Load lsa package for cosine similarity
+
+# Set directory to pull the embeddings
+setwd("~/Data")
+root_results_dir <- "~/Data"
+
+if (!dir.exists(root_results_dir)) {
+  dir.create(root_results_dir, recursive = TRUE)
+}
+
+# Define a manual mapping from language abbreviations to full names
+language_mapping <- list(
+    af= "afrikaans",
+    sq= "albanian",
+    als= "alemannic",
+    am= "amharic",
+    ar= "arabic",
+    an= "aragonese",
+    hy= "armenian",
+    as= "assamese",
+    ast= "asturian",
+    az= "azerbaijani",
+    ba= "bashkir",
+    eu= "basque",
+    bar= "bavarian",
+    be= "belarusian",
+    bn= "bengali",
+    bh= "bihari",
+    bpy= "bishnupriya manipuri",
+    bs= "bosnian",
+    br= "breton",
+    bg= "bulgarian",
+    my= "burmese",
+    ca= "catalan",
+    ceb= "cebuano",
+    bcl= "central bicolano",
+    ce= "chechen",
+    zh= "chinese",
+    cv= "chuvash",
+    co= "corsican",
+    hr= "croatian",
+    cs= "czech",
+    da= "danish",
+    dv= "divehi",
+    nl= "dutch",
+    pa= "eastern punjabi",
+    arz= "egyptian arabic",
+    eml= "emilian-romagnol",
+    en= "english",
+    myv= "erzya",
+    eo= "esperanto",
+    et= "estonian",
+    hif= "fiji hindi",
+    fi= "finnish",
+    fr= "french",
+    gl= "galician",
+    ka= "georgian",
+    de= "german",
+    gom= "goan konkani",
+    el= "greek",
+    gu= "gujarati",
+    ht= "haitian",
+    he= "hebrew",
+    mrj= "hill mari",
+    hi= "hindi",
+    hu= "hungarian",
+    is= "icelandic",
+    io= "ido",
+    ilo= "ilokano",
+    id= "indonesian",
+    ia= "interlingua",
+    ga= "irish",
+    it= "italian",
+    ja= "japanese",
+    jv= "javanese",
+    kn= "kannada",
+    pam= "kapampangan",
+    kk= "kazakh",
+    km= "khmer",
+    ky= "kirghiz",
+    ko= "korean",
+    ku= "kurdish (kurmanji)",
+    ckb= "kurdish (sorani)",
+    la= "latin",
+    lv= "latvian",
+    li= "limburgish",
+    lt= "lithuanian",
+    lmo= "lombard",
+    nds= "low saxon",
+    lb= "luxembourgish",
+    mk= "macedonian",
+    mai= "maithili",
+    mg= "malagasy",
+    ms= "malay",
+    ml= "malayalam",
+    mt= "maltese",
+    gv= "manx",
+    mr= "marathi",
+    mzn= "mazandarani",
+    mhr= "meadow mari",
+    min= "minangkabau",
+    xmf= "mingrelian",
+    mwl= "mirandese",
+    mn= "mongolian",
+    nah= "nahuatl",
+    nap= "neapolitan",
+    ne= "nepali",
+    new= "newar",
+    frr= "north frisian",
+    nso= "northern sotho",
+    no= "norwegian (bokmål)",
+    nn= "norwegian (nynorsk)",
+    oc= "occitan",
+    or= "oriya",
+    os= "ossetian",
+    pfl= "palatinate german",
+    ps= "pashto",
+    fa= "persian",
+    pms= "piedmontese",
+    pl= "polish",
+    pt= "portuguese",
+    qu= "quechua",
+    ro= "romanian",
+    rm= "romansh",
+    ru= "russian",
+    sah= "sakha",
+    sa= "sanskrit",
+    sc= "sardinian",
+    sco= "scots",
+    gd= "scottish gaelic",
+    sr= "serbian",
+    sh= "serbo-croatian",
+    scn= "sicilian",
+    sd= "sindhi",
+    si= "sinhalese",
+    sk= "slovak",
+    sl= "slovenian",
+    so= "somali",
+    azb= "southern azerbaijani",
+    es= "spanish",
+    su= "sundanese",
+    sw= "swahili",
+    sv= "swedish",
+    tl= "tagalog",
+    tg= "tajik",
+    ta= "tamil",
+    tt= "tatar",
+    te= "telugu",
+    th= "thai",
+    bo= "tibetan",
+    tr= "turkish",
+    tk= "turkmen",
+    uk= "ukrainian",
+    hsb= "upper sorbian",
+    ur= "urdu",
+    ug= "uyghur",
+    uz= "uzbek",
+    vec= "venetian",
+    vi= "vietnamese",
+    vo= "volapük",
+    wa= "walloon",
+    war= "waray",
+    cy= "welsh",
+    vls= "west flemish",
+    fy= "west frisian",
+    pnb= "western punjabi",
+    yi= "yiddish",
+    yo= "yoruba",
+    diq= "zazaki",
+    zea= "zeelandic"
+)
+
+# Assuming 'wordlist' is a pre-defined dataframe with columns 'language' and 'word only'
+
+# Get a list of all file names in the directory that match the pattern for .vec files
+files <- list.files(pattern = "^cc\\..*\\.300\\.vec$")
+
+# Use all but one core for parallel processing
+num_cores <- detectCores() - 1
+cl <- makeCluster(num_cores)
+registerDoParallel(cl)
+
+# Capture the total start time
+total_start_time <- Sys.time()
+
+# Parallel processing using foreach
+results <- foreach(i = seq_along(files), .packages = c("dplyr", "readr", "lsa")) %dopar% {
+  tryCatch({
+    # Start timing for this file
+    start_time <- Sys.time()
+    
+    file_name <- files[i]
+    language_abbreviation <- sub("cc\\.(.*)\\.300\\.vec", "\\1", file_name)  # Adjusted for .vec files
+    
+    # Translate abbreviation to full name, skip if not found
+    if (!language_abbreviation %in% names(language_mapping)) {
+      cat("No mapping found for language abbreviation", language_abbreviation, ". Skipping file:", file_name, "\n")
+      return(NULL)
+    }
+    language_full_name <- language_mapping[[language_abbreviation]]
+    
+    # Filter the wordlist for the current language and convert to lowercase
+    specific_words <- wordlist %>%
+      filter(language == language_full_name) %>%
+      pull(`word only`)
+  
+    if (length(specific_words) == 0) {
+      cat("No words found for", language_full_name, ". Skipping file:", file_name, "\n")
+      return(NULL)
+    }
+    
+    # Initialize an empty data frame to store the trimmed word vectors
+    vectors_trim <- data.frame(matrix(ncol = 301))
+    colnames(vectors_trim) <- c("word", paste0("V", 1:300))
+    
+    con <- file(file_name, "r")  # Open the .vec file for reading
+    readLines(con, n = 1)  # Skip the first line which may contain metadata
+    
+    # Initialize a list to keep track of added words
+    added_words <- character()
+    
+    while(TRUE) {
+      line <- readLines(con, n = 1, warn = FALSE)
+      if (length(line) == 0) break  # End of file
+      
+      elements <- strsplit(line, " ")[[1]]  # Split the line into the word and the vector
+      word <- tolower(elements[1])  # First element is the word
+      
+      # Check if the word is in specific_words and hasn't been added yet
+      if (word %in% specific_words && !word %in% added_words) {
+        vector <- as.numeric(elements[-1])  # The rest of the elements are the vector values
+        if (all(!is.na(vector))) {  # Only add if the vector is valid
+          vectors_trim <- rbind(vectors_trim, c(word, vector))  # Add the word and its vector
+          added_words <- c(added_words, word)  # Track the added word
+        }
+      }
+    }
+    close(con)
+    
+    vectors_trim <- vectors_trim[-1, ]  # Remove the initial empty row
+    
+    # Skip further processing if vectors_trim is empty after removing the first row
+    if (nrow(vectors_trim) == 0) {
+      cat("No matching words found in file", file_name, ". Skipping cosine similarity calculation.\n")
+      return(NULL)
+    }
+    
+    # Save the vectors_trim as embeddings_XX.csv in the current directory
+    embeddings_file_path <- paste0("embeddings_", language_abbreviation, ".csv")
+    write.csv(vectors_trim, embeddings_file_path, row.names = FALSE)
+    
+    # Continue with transposition and cosine similarity calculation...
+    vectors_trim[, -1] <- lapply(vectors_trim[, -1], as.numeric)  # Ensure vector components are numeric
+    t_vectors <- t(as.matrix(vectors_trim[,-1]))  # Transpose the vectors matrix
+    colnames(t_vectors) <- vectors_trim[, 1]  # Set the words as column names
+    
+    # Use lsa::cosine() to calculate cosine similarity
+    cos_words <- lsa::cosine(t_vectors)  # Calculate cosine similarity
+    
+    out_name <- paste0(root_results_dir, "/cos_", language_abbreviation, ".csv")
+    write.csv(cos_words, out_name, row.names = TRUE, fileEncoding = "UTF-8")
+
+    # End timing for this file
+    end_time <- Sys.time()
+    processing_time <- end_time - start_time
+    cat("Processing time for", language_abbreviation, ":", processing_time, "\n")
+    
+    return(language_abbreviation)  # Returning the processed language abbreviation
+  }, error = function(e) {
+    cat("Error processing file", files[i], ": ", e$message, "\n")
+    return(NULL)
+  })
+}
+
+# Stop the cluster after the parallel execution
+stopCluster(cl)
+
+# Capture the total end time and compute the total processing time
+total_end_time <- Sys.time()
+total_processing_time <- total_end_time - total_start_time
+cat("Total processing time:", total_processing_time, "\n")
+
+# Reset the working directory to the user's home directory
+setwd("~")
+
+```
+
+#### similarities
+
+```{r}
+# Load necessary libraries
+library(readxl)
+library(reshape2)
+library(lme4)
+library(ggplot2)
+
+# Define the directory containing your CSV files
+directory <- "~/Data/"
+
+# Get the list of files
+file_list <- list.files(directory, pattern = "cos_.*\\.csv$", full.names = TRUE)
+
+# Create a named vector for language code to full name mapping
+language_map <- list(
+    af= "afrikaans",
+    sq= "albanian",
+    als= "alemannic",
+    am= "amharic",
+    ar= "arabic",
+    an= "aragonese",
+    hy= "armenian",
+    as= "assamese",
+    ast= "asturian",
+    az= "azerbaijani",
+    ba= "bashkir",
+    eu= "basque",
+    bar= "bavarian",
+    be= "belarusian",
+    bn= "bengali",
+    bh= "bihari",
+    bpy= "bishnupriya manipuri",
+    bs= "bosnian",
+    br= "breton",
+    bg= "bulgarian",
+    my= "burmese",
+    ca= "catalan",
+    ceb= "cebuano",
+    bcl= "central bicolano",
+    ce= "chechen",
+    zh= "chinese",
+    cv= "chuvash",
+    co= "corsican",
+    hr= "croatian",
+    cs= "czech",
+    da= "danish",
+    dv= "divehi",
+    nl= "dutch",
+    pa= "eastern punjabi",
+    arz= "egyptian arabic",
+    eml= "emilian-romagnol",
+    en= "english",
+    myv= "erzya",
+    eo= "esperanto",
+    et= "estonian",
+    hif= "fiji hindi",
+    fi= "finnish",
+    fr= "french",
+    gl= "galician",
+    ka= "georgian",
+    de= "german",
+    gom= "goan konkani",
+    el= "greek",
+    gu= "gujarati",
+    ht= "haitian",
+    he= "hebrew",
+    mrj= "hill mari",
+    hi= "hindi",
+    hu= "hungarian",
+    is= "icelandic",
+    io= "ido",
+    ilo= "ilokano",
+    id= "indonesian",
+    ia= "interlingua",
+    ga= "irish",
+    it= "italian",
+    ja= "japanese",
+    jv= "javanese",
+    kn= "kannada",
+    pam= "kapampangan",
+    kk= "kazakh",
+    km= "khmer",
+    ky= "kirghiz",
+    ko= "korean",
+    ku= "kurdish (kurmanji)",
+    ckb= "kurdish (sorani)",
+    la= "latin",
+    lv= "latvian",
+    li= "limburgish",
+    lt= "lithuanian",
+    lmo= "lombard",
+    nds= "low saxon",
+    lb= "luxembourgish",
+    mk= "macedonian",
+    mai= "maithili",
+    mg= "malagasy",
+    ms= "malay",
+    ml= "malayalam",
+    mt= "maltese",
+    gv= "manx",
+    mr= "marathi",
+    mzn= "mazandarani",
+    mhr= "meadow mari",
+    min= "minangkabau",
+    xmf= "mingrelian",
+    mwl= "mirandese",
+    mn= "mongolian",
+    nah= "nahuatl",
+    nap= "neapolitan",
+    ne= "nepali",
+    new= "newar",
+    frr= "north frisian",
+    nso= "northern sotho",
+    no= "norwegian (bokmål)",
+    nn= "norwegian (nynorsk)",
+    oc= "occitan",
+    or= "oriya",
+    os= "ossetian",
+    pfl= "palatinate german",
+    ps= "pashto",
+    fa= "persian",
+    pms= "piedmontese",
+    pl= "polish",
+    pt= "portuguese",
+    qu= "quechua",
+    ro= "romanian",
+    rm= "romansh",
+    ru= "russian",
+    sah= "sakha",
+    sa= "sanskrit",
+    sc= "sardinian",
+    sco= "scots",
+    gd= "scottish gaelic",
+    sr= "serbian",
+    sh= "serbo-croatian",
+    scn= "sicilian",
+    sd= "sindhi",
+    si= "sinhalese",
+    sk= "slovak",
+    sl= "slovenian",
+    so= "somali",
+    azb= "southern azerbaijani",
+    es= "spanish",
+    su= "sundanese",
+    sw= "swahili",
+    sv= "swedish",
+    tl= "tagalog",
+    tg= "tajik",
+    ta= "tamil",
+    tt= "tatar",
+    te= "telugu",
+    th= "thai",
+    bo= "tibetan",
+    tr= "turkish",
+    tk= "turkmen",
+    uk= "ukrainian",
+    hsb= "upper sorbian",
+    ur= "urdu",
+    ug= "uyghur",
+    uz= "uzbek",
+    vec= "venetian",
+    vi= "vietnamese",
+    vo= "volapük",
+    wa= "walloon",
+    war= "waray",
+    cy= "welsh",
+    vls= "west flemish",
+    fy= "west frisian",
+    pnb= "western punjabi",
+    yi= "yiddish",
+    yo= "yoruba",
+    diq= "zazaki",
+    zea= "zeelandic"
+)
+
+# Read in the wordlist
+wordlist <- readxl::read_xlsx("~/Data/Gratitude_Indebtedness Wordlist - 241017.xlsx")
+# wordlist <- wordlist %>%
+#   distinct(`word only`, .keep_all = TRUE) %>%
+#   mutate(`word only` = tolower(`word only`))
+
+# Loop through each file
+for (file in file_list) {
+  tryCatch({
+    # Extract the language code from the filename
+    code <- sub("cos_(.*)\\.csv", "\\1", basename(file))
+    
+    # Lookup the full language name
+    language <- language_map[[code]]
+    
+    # Read in the CSV file
+    data <- read.csv(file)
+    
+    # Add a 'word' column to the data
+    colnames(data)[1] <- "word"
+    
+    # Reshape data to long format
+    data_long <- reshape2::melt(data, id.vars = "word")
+    
+    # Filter the wordlist for the current language
+    roots <- wordlist[wordlist$language == language, c("word only", "emotion group")]
+    
+    # Merge data with the wordlist for both word1 and word2
+    data_merge <- merge(data_long, roots, by.x = "word", by.y = "word only")
+    data_merge <- merge(data_merge, roots, by.x = "variable", by.y = "word only")
+    
+    # Rename columns
+    colnames(data_merge) <- c("word1", "word2", "cosine", "group2", "group1")
+    
+    # Add comparison columns for pairwise group testing
+    data_merge$comparison <- paste(data_merge$group1, "vs", data_merge$group2)
+    
+    data_merge$match <- ifelse(
+        data_merge$comparison %in% c("gratitude vs gratitude", "sorriness vs sorriness", "indebtedness vs indebtedness"),
+        "matched",  # Code as 'matched'
+        ifelse(
+          data_merge$comparison %in% c("sorriness vs gratitude", "sorriness vs indebtedness", "indebtedness vs sorriness", 
+                                       "indebtedness vs gratitude", "gratitude vs sorriness", "gratitude vs indebtedness"),
+          "unmatched",  # Code as 'unmatched'
+          NA  # In case there are any other values that don't match these conditions
+        )
+      )
+    
+        # --- NEW SECTION: Sample Random Words from the Language's Embedding ---
+    
+    # Step 1: Open the corresponding embedding file (assuming file naming convention matches)
+    embedding_file <- paste0("~/Data/cc.", code, ".300.vec")  # Adjust path if needed
+    con <- file(embedding_file, "r")
+    
+    # Step 2: Extract the full vocabulary of the language from the embedding file
+    vocab <- c()
+    readLines(con, n = 1)  # Skip the first line (metadata)
+    while(TRUE) {
+      line <- readLines(con, n = 1, warn = FALSE)
+      if (length(line) == 0) break  # End of file
+      word <- tolower(strsplit(line, " ")[[1]][1])  # Extract the word
+      vocab <- c(vocab, word)  # Add the word to the vocabulary list
+    }
+    close(con)
+    
+    # Step 3: Sample 5000 random words from the language's full vocabulary
+    random_word1 <- sample(vocab, 5000, replace = TRUE)
+    random_word2 <- sample(vocab, 5000, replace = TRUE)
+    
+    # Step 4: Create a data frame for the random pairs
+    data_merge_random <- data.frame(
+      word1 = random_word1,
+      word2 = random_word2,
+      cosine = runif(5000, min = 0, max = 1),  # Randomly assign cosine similarity
+      group1 = "random",
+      group2 = "random",
+      comparison = "random vs random",
+      match = "random"
+    )
+    
+    # Combine the random pairs with the original matched/unmatched data
+    data_merge <- rbind(data_merge, data_merge_random)
+    
+    
+    # Convert 'match' to a factor if it's not already one
+    data_merge$match <- as.factor(data_merge$match)
+
+    # Relevel the 'match' factor to make 'unmatched' the reference level
+    data_merge$match <- relevel(data_merge$match, ref = "unmatched")
+    
+    # Check the levels to confirm the change
+    levels(data_merge$match)
+    
+      # Filter for the specific comparisons: Gratitude vs Indebtedness, Sorriness vs Gratitude, Sorriness vs Indebtedness
+      comparison_sorriness_gratitude <- data_merge[data_merge$comparison %in% c("sorriness vs gratitude", "gratitude vs gratitude", "sorriness vs sorriness"), ]
+      # Create a new column that merges word1 and word2, sorted alphabetically to ensure consistency
+      comparison_sorriness_gratitude$merged_words <- apply(comparison_sorriness_gratitude[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+      # Remove duplicated rows based on the merged_words column
+      # Keep only the first occurrence of each unique merged_words pair
+      comparison_sorriness_gratitude <- comparison_sorriness_gratitude[!duplicated(comparison_sorriness_gratitude$merged_words), ]
+
+      comparison_sorriness_indebtedness <- data_merge[data_merge$comparison %in% c("sorriness vs indebtedness", "sorriness vs sorriness", "indebtedness vs indebtedness"), ]
+      # Create a new column that merges word1 and word2, sorted alphabetically to ensure consistency
+      comparison_sorriness_indebtedness$merged_words <- apply(comparison_sorriness_indebtedness[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+      # Remove duplicated rows based on the merged_words column
+      # Keep only the first occurrence of each unique merged_words pair
+      comparison_sorriness_indebtedness <- comparison_sorriness_indebtedness[!duplicated(comparison_sorriness_indebtedness$merged_words), ]
+      
+      comparison_gratitude_indebtedness <- data_merge[data_merge$comparison %in% c("gratitude vs indebtedness", "gratitude vs gratitude", "indebtedness vs indebtedness"), ]
+      comparison_gratitude_indebtedness$merged_words <- apply(comparison_gratitude_indebtedness[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+      # Remove duplicated rows based on the merged_words column
+      # Keep only the first occurrence of each unique merged_words pair
+      comparison_gratitude_indebtedness <- comparison_gratitude_indebtedness[!duplicated(comparison_gratitude_indebtedness$merged_words), ]
+
+      
+    # Run models and save summaries for each pairwise comparison
+
+    # Gratitude vs Indebtedness
+    if (nrow(comparison_gratitude_indebtedness) > 0) {
+      model_gratitude_indebtedness <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_gratitude_indebtedness)
+      beta_gratitude_indebtedness <- fixef(model_gratitude_indebtedness)["matchmatched"]
+      sigma_gratitude_indebtedness <- sigma(model_gratitude_indebtedness)
+      cohen_d_gratitude_indebtedness <- beta_gratitude_indebtedness / sigma_gratitude_indebtedness
+      
+      # Save model summary
+      sink(file = paste0("model_summary_", code, "_gratitude_indebtedness.txt"))
+      print(summary(model_gratitude_indebtedness))
+      print("Cohen's d (Gratitude vs Indebtedness): match more similar?")
+      print(cohen_d_gratitude_indebtedness)
+      sink()
+    }
+    
+    # Sorriness vs Indebtedness
+    if (nrow(comparison_sorriness_indebtedness) > 0) {
+      model_sorriness_indebtedness <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_sorriness_indebtedness)
+      beta_sorriness_indebtedness <- fixef(model_sorriness_indebtedness)["matchmatched"]
+      sigma_sorriness_indebtedness <- sigma(model_sorriness_indebtedness)
+      cohen_d_sorriness_indebtedness <- beta_sorriness_indebtedness / sigma_sorriness_indebtedness
+      
+      # Save model summary
+      sink(file = paste0("model_summary_", code, "_sorriness_indebtedness.txt"))
+      print(summary(model_sorriness_indebtedness))
+      print("Cohen's d (Sorriness vs Indebtedness): match more similar?")
+      print(cohen_d_sorriness_indebtedness)
+      sink()
+    }
+
+    # Sorriness vs Gratitude
+    if (nrow(comparison_sorriness_gratitude) > 0) {
+      model_sorriness_gratitude <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_sorriness_gratitude)
+      beta_sorriness_gratitude <- fixef(model_sorriness_gratitude)["matchmatched"]
+      sigma_sorriness_gratitude <- sigma(model_sorriness_gratitude)
+      cohen_d_sorriness_gratitude <- beta_sorriness_gratitude / sigma_sorriness_gratitude
+      
+      # Save model summary
+      sink(file = paste0("model_summary_", code, "_sorriness_gratitude.txt"))
+      print(summary(model_sorriness_gratitude))
+      print("Cohen's d (Sorriness vs Gratitude): match more similar?")
+      print(cohen_d_sorriness_gratitude)
+      sink()
+    }
+
+    # Create violin plots for each comparison
+
+    # Plot for Gratitude vs Indebtedness
+    if (nrow(comparison_gratitude_indebtedness) > 0) {
+      plot_gratitude_indebtedness <- ggplot(comparison_gratitude_indebtedness, aes(x = match, y = cosine)) + 
+        geom_violin() + 
+        theme_classic() +
+        ggtitle(paste("Cosine Similarity - Gratitude vs Indebtedness -", language))
+      ggsave(filename = paste0("cosine_similarity_", code, "_gratitude_indebtedness.png"), plot = plot_gratitude_indebtedness)
+    }
+
+    # Plot for Sorriness vs Indebtedness
+    if (nrow(comparison_sorriness_indebtedness) > 0) {
+      plot_sorriness_indebtedness <- ggplot(comparison_sorriness_indebtedness, aes(x = match, y = cosine)) + 
+        geom_violin() + 
+        theme_classic() +
+        ggtitle(paste("Cosine Similarity - Sorriness vs Indebtedness -", language))
+      ggsave(filename = paste0("cosine_similarity_", code, "_sorriness_indebtedness.png"), plot = plot_sorriness_indebtedness)
+    }
+
+    # Plot for Sorriness vs Gratitude
+    if (nrow(comparison_sorriness_gratitude) > 0) {
+      plot_sorriness_gratitude <- ggplot(comparison_sorriness_gratitude, aes(x = match, y = cosine)) + 
+        geom_violin() + 
+        theme_classic() +
+        ggtitle(paste("Cosine Similarity - Sorriness vs Gratitude -", language))
+      ggsave(filename = paste0("cosine_similarity_", code, "_sorriness_gratitude.png"), plot = plot_sorriness_gratitude)
+    }
+    
+  }, error = function(e) {
+    # Handle the error, log the issue, and move to the next file
+    message(paste("Error in processing file:", file))
+    message("Error message:", e$message)
+  })
+}
+```
+### 
+
+```{r}
+
+# Get the list of files that start with 'model_summary_' and end with '.txt'
+file_list <- list.files(pattern = "^model_summary_.*\\.txt$", full.names = TRUE)
+
+# Initialize an empty data frame to store results
+result_df <- data.frame(type = character(), language = character(), pair = character(), 
+                        last_line = character(), line_21 = character(), sample = character(), stringsAsFactors = FALSE)
+
+# Loop through each file and extract the parts
+for (file_name in file_list) {
+  # Extract file name without the path
+  file_name_no_path <- basename(file_name)
+  
+  # Remove 'model_summary_' and '.txt' to get the remaining parts of the title
+  title_parts <- gsub("model_summary_|\\.txt", "", file_name_no_path)
+  title_split <- unlist(strsplit(title_parts, "_"))
+  
+  # Extract the type, language, and pair
+  type_value <- "model_summary"
+  language_value <- title_split[1]
+  pair_value <- paste(title_split[2:length(title_split)], collapse = "_")
+  
+  # Read the file lines
+  file_lines <- readLines(file_name)
+  
+  # Get the last line
+  last_line <- tail(file_lines, n = 1)
+  
+  # Get the 21st line, if it exists, otherwise set it to NA
+  if (length(file_lines) >= 21) {
+    line_21 <- file_lines[21]
+  } else {
+    line_21 <- NA
+  }
+  
+  # Get the 16th line, if it exists, otherwise set it to NA
+  if (length(file_lines) >= 16) {
+    sample <- file_lines[16]
+  } else {
+    sample <- NA
+  }
+  
+  # Append to the result data frame
+  result_df <- rbind(result_df, data.frame(type = type_value, language = language_value, 
+                                           pair = pair_value, last_line = last_line, 
+                                           line_21 = line_21, sample = sample, stringsAsFactors = FALSE))
+}
+
+# Print or store the result
+print(result_df)
+
+# If you want to save the result to a CSV file
+write.csv(result_df, "resulting_dataframe_with_last_21st_and_16th_line.csv", row.names = FALSE)
+```
+
+### Graph
+
+```{r}
+
+# Load necessary packages
+library(readxl)
+library(metafor)
+
+# Load your data
+df <- read_xlsx("~/Data/resulting_dataframe_with_last_21st_and_16th_line.xlsx")
+
+# Remove rows where samplesize is less than 30
+df <- subset(df, samplesize >= 30)
+
+# Subset the data for 'XXX' pairs
+df_subset <- subset(df, pair == "sorriness_indebtedness")
+
+# Calculate the variance of Cohen's d (vi) for the subset
+df_subset$vi <- 1 / df_subset$samplesize + (df_subset$cohend^2) / (2 * df_subset$samplesize)
+
+# Sort the effect sizes in ascending order
+df_subset <- df_subset[order(df_subset$cohend, decreasing = FALSE), ]
+
+# Run the meta-analysis using metagen on the subset
+justification <- metagen(TE = df_subset$cohend,       # Use the already calculated Cohen's d values
+                         studlab = df_subset$language_full, # Labels for each study (e.g., language)
+                         seTE = sqrt(df_subset$vi),   # Standard error of effect size (from the calculated variance)
+                         data = df_subset,            # Subsetted dataset with 'gratitude_indebtedness' pairs
+                         sm = "SMD",                  # Type of input data (Cohen's d - Standardized Mean Difference)
+                         fixed = FALSE,               # No fixed-effect model
+                         random = TRUE,               # Random-effects model
+                         method.tau = "REML",         # Estimate between-study variance τ2 using REML
+                         hakn = TRUE)                 # Hartung-Knapp adjustment
+
+# Define the file output and size (e.g., 12x8 inches, 300 dpi)
+png(filename = "forest_plot_large.png", width = 12, height = 30, units = "in", res = 300)
+
+# Create a forest plot
+forest(justification, 
+       xlab = "Effect Size (Cohen's d)", 
+       alim = c(0, 7),  # Adjust axis limits as needed
+       mlab = "Random-Effects Model")
+
+# Close the file output to save the image
+dev.off()
+```
+
+### Ramdom Embedding
+
+```{r}
+# Load necessary libraries
+library(readxl)
+library(reshape2)
+library(lme4)
+library(ggplot2)
+library(dplyr)
+
+# Define the directory containing your CSV files
+directory <- "~/Data/"
+
+# Get the list of files
+file_list <- list.files(directory, pattern = "cos_.*\\.csv$", full.names = TRUE)
+
+# Create a named vector for language code to full name mapping
+# Create a named vector for language code to full name mapping
+language_map <- list(
+    # af= "afrikaans",
+    # sq= "albanian",
+    # als= "alemannic",
+    # am= "amharic",
+    # ar= "arabic",
+    # an= "aragonese",
+    # hy= "armenian",
+    # as= "assamese",
+    # ast= "asturian",
+    # az= "azerbaijani",
+    # ba= "bashkir",
+    # eu= "basque",
+    # bar= "bavarian",
+    # be= "belarusian",
+    # bn= "bengali",
+    # bh= "bihari",
+    # bpy= "bishnupriya manipuri",
+    # bs= "bosnian",
+    # br= "breton",
+    # bg= "bulgarian",
+    # my= "burmese",
+    # ca= "catalan",
+    # ceb= "cebuano",
+    # bcl= "central bicolano",
+    # ce= "chechen",
+    zh= "chinese"#,
+    # cv= "chuvash",
+    # co= "corsican",
+    # hr= "croatian",
+    # cs= "czech",
+    # da= "danish",
+    # dv= "divehi",
+    # nl= "dutch",
+    # pa= "eastern punjabi",
+    # arz= "egyptian arabic",
+    # eml= "emilian-romagnol",
+    # en= "english",
+    # myv= "erzya",
+    # eo= "esperanto",
+    # et= "estonian",
+    # hif= "fiji hindi",
+    # fi= "finnish",
+    # fr= "french",
+    # gl= "galician",
+    # ka= "georgian",
+    # de= "german",
+    # gom= "goan konkani",
+    # el= "greek",
+    # gu= "gujarati",
+    # ht= "haitian",
+    # he= "hebrew",
+    # mrj= "hill mari",
+    # hi= "hindi",
+    # hu= "hungarian",
+    # is= "icelandic",
+    # io= "ido",
+    # ilo= "ilokano",
+    # id= "indonesian",
+    # ia= "interlingua",
+    # ga= "irish",
+    # it= "italian",
+    # ja= "japanese",
+    # jv= "javanese",
+    # kn= "kannada",
+    # pam= "kapampangan",
+    # kk= "kazakh",
+    # km= "khmer",
+    # ky= "kirghiz",
+    # ko= "korean",
+    # ku= "kurdish (kurmanji)",
+    # ckb= "kurdish (sorani)",
+    # la= "latin",
+    # lv= "latvian",
+    # li= "limburgish",
+    # lt= "lithuanian",
+    # lmo= "lombard",
+    # nds= "low saxon",
+    # lb= "luxembourgish",
+    # mk= "macedonian",
+    # mai= "maithili",
+    # mg= "malagasy",
+    # ms= "malay",
+    # ml= "malayalam",
+    # mt= "maltese",
+    # gv= "manx",
+    # mr= "marathi",
+    # mzn= "mazandarani",
+    # mhr= "meadow mari",
+    # min= "minangkabau",
+    # xmf= "mingrelian",
+    # mwl= "mirandese",
+    # mn= "mongolian",
+    # nah= "nahuatl",
+    # nap= "neapolitan",
+    # ne= "nepali",
+    # new= "newar",
+    # frr= "north frisian",
+    # nso= "northern sotho",
+    # no= "norwegian (bokmål)",
+    # nn= "norwegian (nynorsk)",
+    # oc= "occitan",
+    # or= "oriya",
+    # os= "ossetian",
+    # pfl= "palatinate german",
+    # ps= "pashto",
+    # fa= "persian",
+    # pms= "piedmontese",
+    # pl= "polish",
+    # pt= "portuguese",
+    # qu= "quechua",
+    # ro= "romanian",
+    # rm= "romansh",
+    # ru= "russian",
+    # sah= "sakha",
+    # sa= "sanskrit",
+    # sc= "sardinian",
+    # sco= "scots",
+    # gd= "scottish gaelic",
+    # sr= "serbian",
+    # sh= "serbo-croatian",
+    # scn= "sicilian",
+    # sd= "sindhi",
+    # si= "sinhalese",
+    # sk= "slovak",
+    # sl= "slovenian",
+    # so= "somali",
+    # azb= "southern azerbaijani",
+    # es= "spanish",
+    # su= "sundanese",
+    # sw= "swahili",
+    # sv= "swedish",
+    # tl= "tagalog",
+    # tg= "tajik",
+    # ta= "tamil",
+    # tt= "tatar",
+    # te= "telugu",
+    # th= "thai",
+    # bo= "tibetan",
+    # tr= "turkish",
+    # tk= "turkmen",
+    # uk= "ukrainian",
+    # hsb= "upper sorbian",
+    # ur= "urdu",
+    # ug= "uyghur",
+    # uz= "uzbek",
+    # vec= "venetian",
+    # vi= "vietnamese",
+    # vo= "volapük",
+    # wa= "walloon",
+    # war= "waray",
+    # cy= "welsh",
+    # vls= "west flemish",
+    # fy= "west frisian",
+    # pnb= "western punjabi",
+    # yi= "yiddish",
+    # yo= "yoruba",
+    # diq= "zazaki",
+    # zea= "zeelandic"
+)
+# Read in the wordlist
+wordlist <- readxl::read_xlsx("~/Data/Gratitude_Indebtedness Wordlist - 241017.xlsx")
+
+# Loop through each file
+for (file in file_list) {
+  tryCatch({
+    # Extract the language code from the filename
+    code <- sub("cos_(.*)\\.csv", "\\1", basename(file))
+    
+    # Lookup the full language name
+    language <- language_map[[code]]
+    
+    # Read in the CSV file
+    data <- read.csv(file)
+    
+    # Add a 'word' column to the data
+    colnames(data)[1] <- "word"
+    
+    # Reshape data to long format
+    data_long <- reshape2::melt(data, id.vars = "word")
+    
+    # Filter the wordlist for the current language
+    roots <- wordlist[wordlist$language == language, c("word only", "emotion group")]
+    
+    # Merge data with the wordlist for both word1 and word2
+    data_merge <- merge(data_long, roots, by.x = "word", by.y = "word only")
+    data_merge <- merge(data_merge, roots, by.x = "variable", by.y = "word only")
+    
+    # Rename columns
+    colnames(data_merge) <- c("word1", "word2", "cosine", "group2", "group1")
+    
+    # Add comparison columns for pairwise group testing
+    data_merge$comparison <- paste(data_merge$group1, "vs", data_merge$group2)
+    
+    # Assign 'matched' and 'unmatched' based on comparison
+    data_merge$match <- ifelse(
+      data_merge$comparison %in% c("gratitude vs gratitude", "sorriness vs sorriness", "indebtedness vs indebtedness"),
+      "matched",  # Code as 'matched'
+      ifelse(
+        data_merge$comparison %in% c("sorriness vs gratitude", "sorriness vs indebtedness", "indebtedness vs sorriness", 
+                                     "indebtedness vs gratitude", "gratitude vs sorriness", "gratitude vs indebtedness"),
+        "unmatched",  # Code as 'unmatched'
+        NA  # In case there are any other values that don't match these conditions
+      )
+    )
+    
+        # --- NEW SECTION: Sample Random Words from the Language's Embedding ---
+            
+        # --- NEW SECTION: Sample Random Words from the Language's Embedding ---
+        
+        # Step 1: Open the corresponding embedding file (assuming file naming convention matches)
+        embedding_file <- paste0("~/Data/cc.", code, ".300.vec")  # Adjust path if needed
+        con <- file(embedding_file, "r")
+        
+        # Step 2: Extract a random sample of words from the language embedding file without loading everything into memory
+        set.seed(123)  # Set seed for reproducibility
+        lines_to_sample <- 5000  # Target number of words to sample
+        sampled_words <- character()  # Initialize vector for storing sampled words
+        
+        # Read the first line (metadata) and ignore it
+        readLines(con, n = 1)
+        
+        # Set a counter for how many lines (words) you've sampled
+        sample_count <- 0
+        line_count <- 0
+        
+        while (sample_count < lines_to_sample) {
+          line_count <- line_count + 1
+          if (line_count %% 1000 == 0) cat("Processed", line_count, "lines so far\n")
+          
+          # Randomly decide whether to sample this line
+          if (runif(1) < (lines_to_sample / 2000000)) {  # Adjust the denominator based on the size of your file
+            line <- readLines(con, n = 1, warn = FALSE)
+            if (length(line) == 0) break  # End of file reached
+            
+            # Split the line into word and vector
+            elements <- strsplit(line, " ")[[1]]
+            word <- tolower(elements[1])  # First element is the word
+            
+            vector <- as.numeric(elements[-1])  # Remaining elements are vector components
+            
+            # Ensure valid word and vector, then store it
+            if (all(!is.na(vector)) && length(vector) == 300) {
+              sampled_words <- c(sampled_words, word)
+              sample_count <- sample_count + 1
+            }
+          } else {
+            readLines(con, n = 1, warn = FALSE)  # Skip the line
+          }
+        }
+        
+        close(con)
+        
+        # If fewer words are sampled than required, adjust accordingly
+        sample_size <- length(sampled_words)
+        
+        # Step 3: Use the sampled words for further processing
+        random_word1 <- sample(sampled_words, sample_size, replace = TRUE)
+        random_word2 <- sample(sampled_words, sample_size, replace = TRUE)
+        
+        # Step 4: Create a data frame for the random pairs
+        data_merge_random <- data.frame(
+          word1 = random_word1,
+          word2 = random_word2,
+          cosine = runif(sample_size, min = 0, max = 1),  # Randomly assign cosine similarity
+          group1 = "random",
+          group2 = "random",
+          comparison = "random vs random",
+          match = "random"
+        )
+
+    
+    # Combine the random pairs with the original matched/unmatched data
+    data_merge <- rbind(data_merge, data_merge_random)
+    
+    # Select random words not included in the original matched or unmatched pairs
+    all_words <- unique(c(data_merge$word1, data_merge$word2))
+    random_word1 <- sample(all_words, nrow(data_merge), replace = TRUE)  # Sample random words for word1
+    random_word2 <- sample(all_words, nrow(data_merge), replace = TRUE)  # Sample random words for word2
+
+    # Add a new comparison for random words
+    data_merge_random <- data.frame(
+      word1 = random_word1,
+      word2 = random_word2,
+      cosine = runif(nrow(data_merge), min = 0, max = 1),  # Assign random cosine similarity
+      group1 = "random",  # Assign a new group "random"
+      group2 = "random",
+      comparison = "random vs random",
+      match = "random"  # Assign the new 'random' level
+    )
+
+    # Combine original data_merge with the random pairs
+    data_merge <- rbind(data_merge, data_merge_random)
+    
+    # Convert 'match' to a factor
+    data_merge$match <- as.factor(data_merge$match)
+    
+    # Remove rows where cosine similarity is exactly 1
+    data_merge <- data_merge[data_merge$cosine != 1, ]
+    
+    # Step 1: Create a new column that holds the concatenated, sorted word pairs
+    data_merge$sorted_pair <- apply(data_merge[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+    
+    # Step 2: Remove the duplicate pairs based on the sorted_pair column
+    data_merge <- data_merge[!duplicated(data_merge$sorted_pair), ]
+    
+    # Step 3: Optionally drop the sorted_pair column if you no longer need it
+    data_merge <- data_merge[, !(names(data_merge) %in% c("sorted_pair"))]
+
+    # Relevel the 'match' factor to make 'unmatched' the reference level
+    data_merge$match <- factor(data_merge$match, levels = c("random", "unmatched", "matched"))
+
+    # Now proceed with the comparisons as before, including the new 'random' category.
+
+    # Filter for Gratitude vs Indebtedness
+    comparison_gratitude_indebtedness <- data_merge[data_merge$comparison %in% c("gratitude vs indebtedness", "gratitude vs gratitude", "indebtedness vs indebtedness", "random vs random"), ]
+    comparison_gratitude_indebtedness$merged_words <- apply(comparison_gratitude_indebtedness[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+    comparison_gratitude_indebtedness <- comparison_gratitude_indebtedness[!duplicated(comparison_gratitude_indebtedness$merged_words), ]
+
+    # Fit the model
+    if (nrow(comparison_gratitude_indebtedness) > 0) {
+      model_gratitude_indebtedness <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_gratitude_indebtedness)
+      beta_gratitude_indebtedness <- fixef(model_gratitude_indebtedness)["matchmatched"]
+      sigma_gratitude_indebtedness <- sigma(model_gratitude_indebtedness)
+      cohen_d_gratitude_indebtedness <- beta_gratitude_indebtedness / sigma_gratitude_indebtedness
+      
+      # Calculate mean, SE, SD, and N for each condition of cosine
+      condition_summary <- data_merge %>%
+        group_by(match) %>%
+        summarise(
+          N = n(),  # Count the number of observations
+          mean_cosine = mean(cosine, na.rm = TRUE),  # Mean of cosine
+          sd_cosine = sd(cosine, na.rm = TRUE),  # Standard deviation of cosine
+          se_cosine = sd_cosine / sqrt(N)  # Standard error of cosine
+        )
+      
+        # Save model summary and condition stats into one file for Gratitude vs Indebtedness
+        sink(file = paste0("model_summary_", code, "_gratitude_indebtedness7.txt"))
+        
+        cat("Model Summary:\n")
+        print(summary(model_gratitude_indebtedness))  # 'print' works fine for model summaries
+        
+        cat("\nCohen's d (Gratitude vs Indebtedness): match more similar?\n")
+        print(cohen_d_gratitude_indebtedness)
+        
+        cat("\nSummary of cosine similarity by condition:\n")
+        write.table(condition_summary, sep = "\t", row.names = FALSE)
+        
+        sink()  # Close the sink to save everything to the file
+    }
+
+    # Similar logic for Sorriness vs Indebtedness
+    comparison_sorriness_indebtedness <- data_merge[data_merge$comparison %in% c("sorriness vs indebtedness", "sorriness vs sorriness", "indebtedness vs indebtedness", "random vs random"), ]
+    comparison_sorriness_indebtedness$merged_words <- apply(comparison_sorriness_indebtedness[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+    comparison_sorriness_indebtedness <- comparison_sorriness_indebtedness[!duplicated(comparison_sorriness_indebtedness$merged_words), ]
+
+    if (nrow(comparison_sorriness_indebtedness) > 0) {
+      model_sorriness_indebtedness <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_sorriness_indebtedness)
+      beta_sorriness_indebtedness <- fixef(model_sorriness_indebtedness)["matchmatched"]
+      sigma_sorriness_indebtedness <- sigma(model_sorriness_indebtedness)
+      cohen_d_sorriness_indebtedness <- beta_sorriness_indebtedness / sigma_sorriness_indebtedness
+      
+      # Calculate mean, SE, SD, and N for each condition of cosine for Sorriness vs Indebtedness
+      condition_summary_sorriness_indebtedness <- data_merge %>%
+        group_by(match) %>%
+        summarise(
+          N = n(),  # Count the number of observations
+          mean_cosine = mean(cosine, na.rm = TRUE),  # Mean of cosine
+          sd_cosine = sd(cosine, na.rm = TRUE),  # Standard deviation of cosine
+          se_cosine = sd_cosine / sqrt(N)  # Standard error of cosine
+        )
+      
+        # Save model summary and condition stats into one file for Sorriness vs Indebtedness
+        sink(file = paste0("model_summary_", code, "_sorriness_indebtedness7.txt"))
+        
+        cat("Model Summary:\n")
+        print(summary(model_sorriness_indebtedness))  # 'print' still works fine for model summaries
+        
+        cat("\nCohen's d (Sorriness vs Indebtedness): match more similar?\n")
+        print(cohen_d_sorriness_indebtedness)
+        
+        cat("\nSummary of cosine similarity by condition:\n")
+        write.table(condition_summary_sorriness_indebtedness, sep = "\t", row.names = FALSE)
+        
+        sink()  # Close the sink to save everything to the file
+
+    }
+
+    #####
+    
+        # Similar logic for Sorriness vs Gratitude
+        comparison_sorriness_gratitude <- data_merge[data_merge$comparison %in% c("sorriness vs gratitude", "gratitude vs gratitude", "sorriness vs sorriness", "random vs random"), ]
+        comparison_sorriness_gratitude$merged_words <- apply(comparison_sorriness_gratitude[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+        comparison_sorriness_gratitude <- comparison_sorriness_gratitude[!duplicated(comparison_sorriness_gratitude$merged_words), ]
+        
+        # 1. Matched vs Nonmatched
+        comparison_matched_vs_nonmatched <- comparison_sorriness_gratitude[comparison_sorriness_gratitude$match %in% c("matched", "unmatched"), ]
+        if (nrow(comparison_matched_vs_nonmatched) > 0) {
+          model_matched_vs_nonmatched <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_matched_vs_nonmatched)
+          beta_matched_vs_nonmatched <- fixef(model_matched_vs_nonmatched)["matchmatched"]
+          sigma_matched_vs_nonmatched <- sigma(model_matched_vs_nonmatched)
+          cohen_d_matched_vs_nonmatched <- beta_matched_vs_nonmatched / sigma_matched_vs_nonmatched
+          
+          # Calculate mean, SE, SD, and N for each condition of cosine
+          condition_summary_matched_vs_nonmatched <- comparison_matched_vs_nonmatched %>%
+            group_by(match) %>%
+            summarise(
+              N = n(),
+              mean_cosine = mean(cosine, na.rm = TRUE),
+              sd_cosine = sd(cosine, na.rm = TRUE),
+              se_cosine = sd_cosine / sqrt(N)
+            )
+          
+          # Save model summary and condition stats into one file
+          sink(file = paste0("model_summary_", code, "_matched_vs_nonmatched.txt"))
+          
+          cat("Model Summary (Matched vs Nonmatched):\n")
+          print(summary(model_matched_vs_nonmatched))
+          
+          cat("\nCohen's d (Matched vs Nonmatched): match more similar?\n")
+          print(cohen_d_matched_vs_nonmatched)
+          
+          cat("\nSummary of cosine similarity by condition (Matched vs Nonmatched):\n")
+          write.table(condition_summary_matched_vs_nonmatched, sep = "\t", row.names = FALSE)
+          
+          sink()  # Close the sink
+        }
+        
+        # 2. Matched vs Random
+        comparison_matched_vs_random <- comparison_sorriness_gratitude[comparison_sorriness_gratitude$match %in% c("matched", "random"), ]
+        if (nrow(comparison_matched_vs_random) > 0) {
+          model_matched_vs_random <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_matched_vs_random)
+          beta_matched_vs_random <- fixef(model_matched_vs_random)["matchmatched"]
+          sigma_matched_vs_random <- sigma(model_matched_vs_random)
+          cohen_d_matched_vs_random <- beta_matched_vs_random / sigma_matched_vs_random
+          
+          # Calculate mean, SE, SD, and N for each condition of cosine
+          condition_summary_matched_vs_random <- comparison_matched_vs_random %>%
+            group_by(match) %>%
+            summarise(
+              N = n(),
+              mean_cosine = mean(cosine, na.rm = TRUE),
+              sd_cosine = sd(cosine, na.rm = TRUE),
+              se_cosine = sd_cosine / sqrt(N)
+            )
+          
+          # Save model summary and condition stats into one file
+          sink(file = paste0("model_summary_", code, "_matched_vs_random.txt"))
+          
+          cat("Model Summary (Matched vs Random):\n")
+          print(summary(model_matched_vs_random))
+          
+          cat("\nCohen's d (Matched vs Random): match more similar?\n")
+          print(cohen_d_matched_vs_random)
+          
+          cat("\nSummary of cosine similarity by condition (Matched vs Random):\n")
+          write.table(condition_summary_matched_vs_random, sep = "\t", row.names = FALSE)
+          
+          sink()  # Close the sink
+        }
+        
+        # 3. Nonmatched vs Random
+        comparison_nonmatched_vs_random <- comparison_sorriness_gratitude[comparison_sorriness_gratitude$match %in% c("unmatched", "random"), ]
+        if (nrow(comparison_nonmatched_vs_random) > 0) {
+          model_nonmatched_vs_random <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_nonmatched_vs_random)
+          beta_nonmatched_vs_random <- fixef(model_nonmatched_vs_random)["matchunmatched"]
+          sigma_nonmatched_vs_random <- sigma(model_nonmatched_vs_random)
+          cohen_d_nonmatched_vs_random <- beta_nonmatched_vs_random / sigma_nonmatched_vs_random
+          
+          # Calculate mean, SE, SD, and N for each condition of cosine
+          condition_summary_nonmatched_vs_random <- comparison_nonmatched_vs_random %>%
+            group_by(match) %>%
+            summarise(
+              N = n(),
+              mean_cosine = mean(cosine, na.rm = TRUE),
+              sd_cosine = sd(cosine, na.rm = TRUE),
+              se_cosine = sd_cosine / sqrt(N)
+            )
+          
+          # Save model summary and condition stats into one file
+          sink(file = paste0("model_summary_", code, "_nonmatched_vs_random.txt"))
+          
+          cat("Model Summary (Nonmatched vs Random):\n")
+          print(summary(model_nonmatched_vs_random))
+          
+          cat("\nCohen's d (Nonmatched vs Random): nonmatched more similar?\n")
+          print(cohen_d_nonmatched_vs_random)
+          
+          cat("\nSummary of cosine similarity by condition (Nonmatched vs Random):\n")
+          write.table(condition_summary_nonmatched_vs_random, sep = "\t", row.names = FALSE)
+          
+          sink()  # Close the sink
+        }
+    
+    # Generate plots (with 'random' included)
+    if (nrow(comparison_gratitude_indebtedness) > 0) {
+      plot_gratitude_indebtedness <- ggplot(comparison_gratitude_indebtedness, aes(x = match, y = cosine)) + 
+        geom_violin() + 
+        theme_classic() +
+        ggtitle(paste("Cosine Similarity - Gratitude vs Indebtedness -", language))
+      ggsave(filename = paste0("cosine_similarity_", code, "_gratitude_indebtedness7.png"), plot = plot_gratitude_indebtedness)
+    }
+
+    if (nrow(comparison_sorriness_indebtedness) > 0) {
+      plot_sorriness_indebtedness <- ggplot(comparison_sorriness_indebtedness, aes(x = match, y = cosine)) + 
+        geom_violin() + 
+        theme_classic() +
+        ggtitle(paste("Cosine Similarity - Sorriness vs Indebtedness -", language))
+      ggsave(filename = paste0("cosine_similarity_", code, "_sorriness_indebtedness7.png"), plot = plot_sorriness_indebtedness)
+    }
+
+    if (nrow(comparison_sorriness_gratitude) > 0) {
+      plot_sorriness_gratitude <- ggplot(comparison_sorriness_gratitude, aes(x = match, y = cosine)) + 
+        geom_violin() + 
+        theme_classic() +
+        ggtitle(paste("Cosine Similarity - Sorriness vs Gratitude -", language))
+      ggsave(filename = paste0("cosine_similarity_", code, "_sorriness_gratitude7.png"), plot = plot_sorriness_gratitude)
+    }
+    
+  }, error = function(e) {
+    # Handle the error, log the issue, and move to the next file
+    message(paste("Error in processing file:", file))
+    message("Error message:", e$message)
+  })
+}
+```
+
+```{r}
+head(data_merge[data_merge$match == "matched", c("word1", "word2", "cosine")], 20)
+head(data_merge[data_merge$match == "unmatched", c("word1", "word2", "cosine")], 20)
+
+```
+
+
+
+```{r}
+# Load necessary libraries
+library(readxl)
+library(reshape2)
+library(lme4)
+library(ggplot2)
+
+# Define the directory containing your CSV files
+directory <- "~/Data/"
+
+# Get the list of files
+file_list <- list.files(directory, pattern = "cos_.*\\.csv$", full.names = TRUE)
+
+# Create a named vector for language code to full name mapping
+language_map <- list(
+    # af= "afrikaans",
+    # sq= "albanian",
+    # als= "alemannic",
+    # am= "amharic",
+    # ar= "arabic",
+    # an= "aragonese",
+    # hy= "armenian",
+    # as= "assamese",
+    # ast= "asturian",
+    # az= "azerbaijani",
+    # ba= "bashkir",
+    # eu= "basque",
+    # bar= "bavarian",
+    # be= "belarusian",
+    # bn= "bengali",
+    # bh= "bihari",
+    # bpy= "bishnupriya manipuri",
+    # bs= "bosnian",
+    # br= "breton",
+    # bg= "bulgarian",
+    # my= "burmese",
+    # ca= "catalan",
+    # ceb= "cebuano",
+    # bcl= "central bicolano",
+    # ce= "chechen",
+    zh= "chinese"#,
+    # cv= "chuvash",
+    # co= "corsican",
+    # hr= "croatian",
+    # cs= "czech",
+    # da= "danish",
+    # dv= "divehi",
+    # nl= "dutch",
+    # pa= "eastern punjabi",
+    # arz= "egyptian arabic",
+    # eml= "emilian-romagnol",
+    # en= "english",
+    # myv= "erzya",
+    # eo= "esperanto",
+    # et= "estonian",
+    # hif= "fiji hindi",
+    # fi= "finnish",
+    # fr= "french",
+    # gl= "galician",
+    # ka= "georgian",
+    # de= "german",
+    # gom= "goan konkani",
+    # el= "greek",
+    # gu= "gujarati",
+    # ht= "haitian",
+    # he= "hebrew",
+    # mrj= "hill mari",
+    # hi= "hindi",
+    # hu= "hungarian",
+    # is= "icelandic",
+    # io= "ido",
+    # ilo= "ilokano",
+    # id= "indonesian",
+    # ia= "interlingua",
+    # ga= "irish",
+    # it= "italian",
+    # ja= "japanese",
+    # jv= "javanese",
+    # kn= "kannada",
+    # pam= "kapampangan",
+    # kk= "kazakh",
+    # km= "khmer",
+    # ky= "kirghiz",
+    # ko= "korean",
+    # ku= "kurdish (kurmanji)",
+    # ckb= "kurdish (sorani)",
+    # la= "latin",
+    # lv= "latvian",
+    # li= "limburgish",
+    # lt= "lithuanian",
+    # lmo= "lombard",
+    # nds= "low saxon",
+    # lb= "luxembourgish",
+    # mk= "macedonian",
+    # mai= "maithili",
+    # mg= "malagasy",
+    # ms= "malay",
+    # ml= "malayalam",
+    # mt= "maltese",
+    # gv= "manx",
+    # mr= "marathi",
+    # mzn= "mazandarani",
+    # mhr= "meadow mari",
+    # min= "minangkabau",
+    # xmf= "mingrelian",
+    # mwl= "mirandese",
+    # mn= "mongolian",
+    # nah= "nahuatl",
+    # nap= "neapolitan",
+    # ne= "nepali",
+    # new= "newar",
+    # frr= "north frisian",
+    # nso= "northern sotho",
+    # no= "norwegian (bokmål)",
+    # nn= "norwegian (nynorsk)",
+    # oc= "occitan",
+    # or= "oriya",
+    # os= "ossetian",
+    # pfl= "palatinate german",
+    # ps= "pashto",
+    # fa= "persian",
+    # pms= "piedmontese",
+    # pl= "polish",
+    # pt= "portuguese",
+    # qu= "quechua",
+    # ro= "romanian",
+    # rm= "romansh",
+    # ru= "russian",
+    # sah= "sakha",
+    # sa= "sanskrit",
+    # sc= "sardinian",
+    # sco= "scots",
+    # gd= "scottish gaelic",
+    # sr= "serbian",
+    # sh= "serbo-croatian",
+    # scn= "sicilian",
+    # sd= "sindhi",
+    # si= "sinhalese",
+    # sk= "slovak",
+    # sl= "slovenian",
+    # so= "somali",
+    # azb= "southern azerbaijani",
+    # es= "spanish",
+    # su= "sundanese",
+    # sw= "swahili",
+    # sv= "swedish",
+    # tl= "tagalog",
+    # tg= "tajik",
+    # ta= "tamil",
+    # tt= "tatar",
+    # te= "telugu",
+    # th= "thai",
+    # bo= "tibetan",
+    # tr= "turkish",
+    # tk= "turkmen",
+    # uk= "ukrainian",
+    # hsb= "upper sorbian",
+    # ur= "urdu",
+    # ug= "uyghur",
+    # uz= "uzbek",
+    # vec= "venetian",
+    # vi= "vietnamese",
+    # vo= "volapük",
+    # wa= "walloon",
+    # war= "waray",
+    # cy= "welsh",
+    # vls= "west flemish",
+    # fy= "west frisian",
+    # pnb= "western punjabi",
+    # yi= "yiddish",
+    # yo= "yoruba",
+    # diq= "zazaki",
+    # zea= "zeelandic"
+)
+
+# Read in the wordlist
+wordlist <- readxl::read_xlsx("~/Data/Gratitude_Indebtedness Wordlist - 241017.xlsx")
+
+# Loop through each file
+for (file in file_list) {
+  tryCatch({
+    # Extract the language code from the filename
+    code <- sub("cos_(.*)\\.csv", "\\1", basename(file))
+    language <- language_map[[code]]
+    
+    # Read in the CSV file
+    data <- read.csv(file)
+    colnames(data)[1] <- "word"
+    data_long <- reshape2::melt(data, id.vars = "word")
+    
+    # Filter the wordlist for the current language
+    roots <- wordlist[wordlist$language == language, c("word only", "emotion group")]
+    
+    # Merge data with the wordlist
+    data_merge <- merge(data_long, roots, by.x = "word", by.y = "word only")
+    data_merge <- merge(data_merge, roots, by.x = "variable", by.y = "word only")
+    colnames(data_merge) <- c("word1", "word2", "cosine", "group2", "group1")
+    
+    data_merge$comparison <- paste(data_merge$group1, "vs", data_merge$group2)
+    
+    # Rename 'match' to 'match_status'
+    data_merge$match_status <- ifelse(
+      data_merge$comparison %in% c("gratitude vs gratitude", "sorriness vs sorriness", "indebtedness vs indebtedness"),
+      "matched", 
+      ifelse(
+        data_merge$comparison %in% c("sorriness vs gratitude", "indebtedness vs gratitude", "indebtedness vs sorriness", "gratitude vs sorriness", "gratitude vs indebtedness"),
+        "unmatched", 
+        "random"
+      )
+    )
+    
+    # Filter for Gratitude vs Indebtedness
+    comparison_gratitude_indebtedness <- data_merge[data_merge$comparison %in% c("gratitude vs indebtedness", "gratitude vs gratitude", "indebtedness vs indebtedness", "random vs random"), ]
+    comparison_gratitude_indebtedness$merged_words <- apply(comparison_gratitude_indebtedness[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+    comparison_gratitude_indebtedness <- comparison_gratitude_indebtedness[!duplicated(comparison_gratitude_indebtedness$merged_words), ]
+
+    if (nrow(comparison_gratitude_indebtedness) > 0) {
+      model_gratitude_indebtedness <- lmer(cosine ~ match_status + (1|group1) + (1|group2), data = comparison_gratitude_indebtedness)
+      beta_gratitude_indebtedness <- fixef(model_gratitude_indebtedness)["match_statusmatched"]
+      sigma_gratitude_indebtedness <- sigma(model_gratitude_indebtedness)
+      cohen_d_gratitude_indebtedness <- beta_gratitude_indebtedness / sigma_gratitude_indebtedness
+      
+      condition_summary <- data_merge %>%
+        group_by(match_status) %>%
+        summarise(
+          N = n(), mean_cosine = mean(cosine, na.rm = TRUE), sd_cosine = sd(cosine, na.rm = TRUE), se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      sink(file = paste0("model_summary_", code, "_gratitude_indebtedness7.txt"))
+      cat("Model Summary:\n")
+      print(summary(model_gratitude_indebtedness))
+      cat("\nCohen's d (Gratitude vs Indebtedness): match more similar?\n")
+      print(cohen_d_gratitude_indebtedness)
+      cat("\nSummary of cosine similarity by condition:\n")
+      write.table(condition_summary, sep = "\t", row.names = FALSE)
+      sink()
+    }
+
+    # Similar logic for Sorriness vs Indebtedness
+    comparison_sorriness_indebtedness <- data_merge[data_merge$comparison %in% c("sorriness vs indebtedness", "sorriness vs sorriness", "indebtedness vs indebtedness", "random vs random"), ]
+    comparison_sorriness_indebtedness$merged_words <- apply(comparison_sorriness_indebtedness[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+    comparison_sorriness_indebtedness <- comparison_sorriness_indebtedness[!duplicated(comparison_sorriness_indebtedness$merged_words), ]
+
+    if (nrow(comparison_sorriness_indebtedness) > 0) {
+      model_sorriness_indebtedness <- lmer(cosine ~ match_status + (1|group1) + (1|group2), data = comparison_sorriness_indebtedness)
+      beta_sorriness_indebtedness <- fixef(model_sorriness_indebtedness)["match_statusmatched"]
+      sigma_sorriness_indebtedness <- sigma(model_sorriness_indebtedness)
+      cohen_d_sorriness_indebtedness <- beta_sorriness_indebtedness / sigma_sorriness_indebtedness
+      
+      condition_summary_sorriness_indebtedness <- data_merge %>%
+        group_by(match_status) %>%
+        summarise(
+          N = n(), mean_cosine = mean(cosine, na.rm = TRUE), sd_cosine = sd(cosine, na.rm = TRUE), se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      sink(file = paste0("model_summary_", code, "_sorriness_indebtedness7.txt"))
+      cat("Model Summary:\n")
+      print(summary(model_sorriness_indebtedness))
+      cat("\nCohen's d (Sorriness vs Indebtedness): match more similar?\n")
+      print(cohen_d_sorriness_indebtedness)
+      cat("\nSummary of cosine similarity by condition:\n")
+      write.table(condition_summary_sorriness_indebtedness, sep = "\t", row.names = FALSE)
+      sink()
+    }
+
+    #####
+    # Similar logic for Sorriness vs Gratitude
+    comparison_sorriness_gratitude <- data_merge[data_merge$comparison %in% c("sorriness vs gratitude", "gratitude vs gratitude", "sorriness vs sorriness", "random vs random"), ]
+    comparison_sorriness_gratitude$merged_words <- apply(comparison_sorriness_gratitude[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+    comparison_sorriness_gratitude <- comparison_sorriness_gratitude[!duplicated(comparison_sorriness_gratitude$merged_words), ]
+    
+    # 1. Matched vs Nonmatched
+    comparison_matched_vs_nonmatched <- comparison_sorriness_gratitude[comparison_sorriness_gratitude$match_status %in% c("matched", "unmatched"), ]
+    if (nrow(comparison_matched_vs_nonmatched) > 0) {
+      model_matched_vs_nonmatched <- lmer(cosine ~ match_status + (1|group1) + (1|group2), data = comparison_matched_vs_nonmatched)
+      beta_matched_vs_nonmatched <- fixef(model_matched_vs_nonmatched)["match_statusmatched"]
+      sigma_matched_vs_nonmatched <- sigma(model_matched_vs_nonmatched)
+      cohen_d_matched_vs_nonmatched <- beta_matched_vs_nonmatched / sigma_matched_vs_nonmatched
+      
+      condition_summary_matched_vs_nonmatched <- comparison_matched_vs_nonmatched %>%
+        group_by(match_status) %>%
+        summarise(
+          N = n(), mean_cosine = mean(cosine, na.rm = TRUE), sd_cosine = sd(cosine, na.rm = TRUE), se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      sink(file = paste0("model_summary_", code, "_matched_vs_nonmatched.txt"))
+      cat("Model Summary (Matched vs Nonmatched):\n")
+      print(summary(model_matched_vs_nonmatched))
+      cat("\nCohen's d (Matched vs Nonmatched): match more similar?\n")
+      print(cohen_d_matched_vs_nonmatched)
+      cat("\nSummary of cosine similarity by condition (Matched vs Nonmatched):\n")
+      write.table(condition_summary_matched_vs_nonmatched, sep = "\t", row.names = FALSE)
+      sink()
+    }
+    
+    # 2. Matched vs Random
+    comparison_matched_vs_random <- comparison_sorriness_gratitude[comparison_sorriness_gratitude$match_status %in% c("matched", "random"), ]
+    if (nrow(comparison_matched_vs_random) > 0) {
+      model_matched_vs_random <- lmer(cosine ~ match_status + (1|group1) + (1|group2), data = comparison_matched_vs_random)
+      beta_matched_vs_random <- fixef(model_matched_vs_random)["match_statusmatched"]
+      sigma_matched_vs_random <- sigma(model_matched_vs_random)
+      cohen_d_matched_vs_random <- beta_matched_vs_random / sigma_matched_vs_random
+      
+      condition_summary_matched_vs_random <- comparison_matched_vs_random %>%
+        group_by(match_status) %>%
+        summarise(
+          N = n(), mean_cosine = mean(cosine, na.rm = TRUE), sd_cosine = sd(cosine, na.rm = TRUE), se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      sink(file = paste0("model_summary_", code, "_matched_vs_random.txt"))
+      cat("Model Summary (Matched vs Random):\n")
+      print(summary(model_matched_vs_random))
+      cat("\nCohen's d (Matched vs Random): match more similar?\n")
+      print(cohen_d_matched_vs_random)
+      cat("\nSummary of cosine similarity by condition (Matched vs Random):\n")
+      write.table(condition_summary_matched_vs_random, sep = "\t", row.names = FALSE)
+      sink()
+    }
+    
+    # 3. Nonmatched vs Random
+    comparison_nonmatched_vs_random <- comparison_sorriness_gratitude[comparison_sorriness_gratitude$match_status %in% c("unmatched", "random"), ]
+    if (nrow(comparison_nonmatched_vs_random) > 0) {
+      model_nonmatched_vs_random <- lmer(cosine ~ match_status + (1|group1) + (1|group2), data = comparison_nonmatched_vs_random)
+      beta_nonmatched_vs_random <- fixef(model_nonmatched_vs_random)["match_statusunmatched"]
+      sigma_nonmatched_vs_random <- sigma(model_nonmatched_vs_random)
+      cohen_d_nonmatched_vs_random <- beta_nonmatched_vs_random / sigma_nonmatched_vs_random
+      
+      condition_summary_nonmatched_vs_random <- comparison_nonmatched_vs_random %>%
+        group_by(match_status) %>%
+        summarise(
+          N = n(), mean_cosine = mean(cosine, na.rm = TRUE), sd_cosine = sd(cosine, na.rm = TRUE), se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      sink(file = paste0("model_summary_", code, "_nonmatched_vs_random.txt"))
+      cat("Model Summary (Nonmatched vs Random):\n")
+      print(summary(model_nonmatched_vs_random))
+      cat("\nCohen's d (Nonmatched vs Random): nonmatched more similar?\n")
+      print(cohen_d_nonmatched_vs_random)
+      cat("\nSummary of cosine similarity by condition (Nonmatched vs Random):\n")
+      write.table(condition_summary_nonmatched_vs_random, sep = "\t", row.names = FALSE)
+      sink()
+    }
+    
+    # Generate plots
+    if (nrow(comparison_gratitude_indebtedness) > 0) {
+      plot_gratitude_indebtedness <- ggplot(comparison_gratitude_indebtedness, aes(x = match_status, y = cosine)) + 
+        geom_violin() + theme_classic() +
+        ggtitle(paste("Cosine Similarity - Gratitude vs Indebtedness -", language))
+      ggsave(filename = paste0("cosine_similarity_", code, "_gratitude_indebtedness7.png"), plot = plot_gratitude_indebtedness)
+    }
+
+    if (nrow(comparison_sorriness_indebtedness) > 0) {
+      plot_sorriness_indebtedness <- ggplot(comparison_sorriness_indebtedness, aes(x = match_status, y = cosine)) + 
+        geom_violin() + theme_classic() +
+        ggtitle(paste("Cosine Similarity - Sorriness vs Indebtedness -", language))
+      ggsave(filename = paste0("cosine_similarity_", code, "_sorriness_indebtedness7.png"), plot = plot_sorriness_indebtedness)
+    }
+
+    if (nrow(comparison_sorriness_gratitude) > 0) {
+      plot_sorriness_gratitude <- ggplot(comparison_sorriness_gratitude, aes(x = match_status, y = cosine)) + 
+        geom_violin() + theme_classic() +
+        ggtitle(paste("Cosine Similarity - Sorriness vs Gratitude -", language))
+      ggsave(filename = paste0("cosine_similarity_", code, "_sorriness_gratitude7.png"), plot = plot_sorriness_gratitude)
+    }
+
+  }, error = function(e) {
+    message(paste("Error in processing file:", file))
+    message("Error message:", e$message)
+  })
+}
+
+```
+
+```{r}
+# Load necessary libraries
+library(readxl)
+library(reshape2)
+library(lme4)
+library(ggplot2)
+library(dplyr)
+
+# Define the directory containing your CSV files
+directory <- "~/Data/"
+
+# Get the list of files
+file_list <- list.files(directory, pattern = "cos_.*\\.csv$", full.names = TRUE)
+
+# Create a named vector for language code to full name mapping
+language_map <- list(
+    af= "afrikaans",
+    sq= "albanian",
+    als= "alemannic",
+    am= "amharic",
+    ar= "arabic",
+    an= "aragonese",
+    hy= "armenian",
+    as= "assamese",
+    ast= "asturian",
+    az= "azerbaijani",
+    ba= "bashkir",
+    eu= "basque",
+    bar= "bavarian",
+    be= "belarusian",
+    bn= "bengali",
+    bh= "bihari",
+    bpy= "bishnupriya manipuri",
+    bs= "bosnian",
+    br= "breton",
+    bg= "bulgarian",
+    my= "burmese",
+    ca= "catalan",
+    ceb= "cebuano",
+    bcl= "central bicolano",
+    ce= "chechen",
+    zh= "chinese",
+    cv= "chuvash",
+    co= "corsican",
+    hr= "croatian",
+    cs= "czech",
+    da= "danish",
+    dv= "divehi",
+    nl= "dutch",
+    pa= "eastern punjabi",
+    arz= "egyptian arabic",
+    eml= "emilian-romagnol",
+    en= "english",
+    myv= "erzya",
+    eo= "esperanto",
+    et= "estonian",
+    hif= "fiji hindi",
+    fi= "finnish",
+    fr= "french",
+    gl= "galician",
+    ka= "georgian",
+    de= "german",
+    gom= "goan konkani",
+    el= "greek",
+    gu= "gujarati",
+    ht= "haitian",
+    he= "hebrew",
+    mrj= "hill mari",
+    hi= "hindi",
+    hu= "hungarian",
+    is= "icelandic",
+    io= "ido",
+    ilo= "ilokano",
+    id= "indonesian",
+    ia= "interlingua",
+    ga= "irish",
+    it= "italian",
+    ja= "japanese",
+    jv= "javanese",
+    kn= "kannada",
+    pam= "kapampangan",
+    kk= "kazakh",
+    km= "khmer",
+    ky= "kirghiz",
+    ko= "korean",
+    ku= "kurdish (kurmanji)",
+    ckb= "kurdish (sorani)",
+    la= "latin",
+    lv= "latvian",
+    li= "limburgish",
+    lt= "lithuanian",
+    lmo= "lombard",
+    nds= "low saxon",
+    lb= "luxembourgish",
+    mk= "macedonian",
+    mai= "maithili",
+    mg= "malagasy",
+    ms= "malay",
+    ml= "malayalam",
+    mt= "maltese",
+    gv= "manx",
+    mr= "marathi",
+    mzn= "mazandarani",
+    mhr= "meadow mari",
+    min= "minangkabau",
+    xmf= "mingrelian",
+    mwl= "mirandese",
+    mn= "mongolian",
+    nah= "nahuatl",
+    nap= "neapolitan",
+    ne= "nepali",
+    new= "newar",
+    frr= "north frisian",
+    nso= "northern sotho",
+    no= "norwegian (bokmål)",
+    nn= "norwegian (nynorsk)",
+    oc= "occitan",
+    or= "oriya",
+    os= "ossetian",
+    pfl= "palatinate german",
+    ps= "pashto",
+    fa= "persian",
+    pms= "piedmontese",
+    pl= "polish",
+    pt= "portuguese",
+    qu= "quechua",
+    ro= "romanian",
+    rm= "romansh",
+    ru= "russian",
+    sah= "sakha",
+    sa= "sanskrit",
+    sc= "sardinian",
+    sco= "scots",
+    gd= "scottish gaelic",
+    sr= "serbian",
+    sh= "serbo-croatian",
+    scn= "sicilian",
+    sd= "sindhi",
+    si= "sinhalese",
+    sk= "slovak",
+    sl= "slovenian",
+    so= "somali",
+    azb= "southern azerbaijani",
+    es= "spanish",
+    su= "sundanese",
+    sw= "swahili",
+    sv= "swedish",
+    tl= "tagalog",
+    tg= "tajik",
+    ta= "tamil",
+    tt= "tatar",
+    te= "telugu",
+    th= "thai",
+    bo= "tibetan",
+    tr= "turkish",
+    tk= "turkmen",
+    uk= "ukrainian",
+    hsb= "upper sorbian",
+    ur= "urdu",
+    ug= "uyghur",
+    uz= "uzbek",
+    vec= "venetian",
+    vi= "vietnamese",
+    vo= "volapük",
+    wa= "walloon",
+    war= "waray",
+    cy= "welsh",
+    vls= "west flemish",
+    fy= "west frisian",
+    pnb= "western punjabi",
+    yi= "yiddish",
+    yo= "yoruba",
+    diq= "zazaki",
+    zea= "zeelandic"
+)
+
+# Read in the wordlist
+wordlist <- readxl::read_xlsx("~/Data/Gratitude_Indebtedness Wordlist - 241017.xlsx")
+
+# Loop through each file
+for (file in file_list) {
+  tryCatch({
+    # Extract the language code from the filename
+    code <- sub("cos_(.*)\\.csv", "\\1", basename(file))
+    
+    # Lookup the full language name
+    language <- language_map[[code]]
+    
+    # Read in the CSV file
+    data <- read.csv(file)
+    
+    # Add a 'word' column to the data
+    colnames(data)[1] <- "word"
+    
+    # Reshape data to long format
+    data_long <- reshape2::melt(data, id.vars = "word")
+    
+    # Filter the wordlist for the current language
+    roots <- wordlist[wordlist$language == language, c("word only", "emotion group")]
+    
+    # Merge data with the wordlist for both word1 and word2
+    data_merge <- merge(data_long, roots, by.x = "word", by.y = "word only")
+    data_merge <- merge(data_merge, roots, by.x = "variable", by.y = "word only")
+    
+    # Rename columns
+    colnames(data_merge) <- c("word1", "word2", "cosine", "group2", "group1")
+    
+    # Add comparison columns for pairwise group testing
+    data_merge$comparison <- paste(data_merge$group1, "vs", data_merge$group2)
+    
+    # Assign 'matched' and 'unmatched' based on comparison
+    data_merge$match <- ifelse(
+      data_merge$comparison %in% c("gratitude vs gratitude", "sorriness vs sorriness", "indebtedness vs indebtedness"),
+      "matched",  # Code as 'matched'
+      ifelse(
+        data_merge$comparison %in% c("sorriness vs gratitude", "sorriness vs indebtedness", "indebtedness vs sorriness", 
+                                     "indebtedness vs gratitude", "gratitude vs sorriness", "gratitude vs indebtedness"),
+        "unmatched",  # Code as 'unmatched'
+        NA  # In case there are any other values that don't match these conditions
+      )
+    )
+    
+    # --- NEW SECTION: Sample Random Words from the Language's Embedding ---
+    embedding_file <- paste0("~/Data/cc.", code, ".300.vec")  # Adjust path if needed
+
+    # Get total number of lines in the file (count lines first)
+    con <- file(embedding_file, "r")
+    total_lines <- 0
+    while (length(readLines(con, n = 1, warn = FALSE)) > 0) {
+      total_lines <- total_lines + 1
+    }
+    close(con)
+    
+    # Re-open the file for actual sampling
+    con <- file(embedding_file, "r")
+    set.seed(123)  # Set seed for reproducibility
+    lines_to_sample <- 5000  # Target number of words to sample
+    sampled_words <- character()
+    readLines(con, n = 1)  # Ignore metadata
+    
+    sample_count <- 0
+    line_count <- 0
+    
+    # Sample based on the actual total number of lines
+    while (sample_count < lines_to_sample) {
+      line_count <- line_count + 1
+      if (line_count %% 1000 == 0) cat("Processed", line_count, "lines so far\n")
+    
+      if (runif(1) < (lines_to_sample / total_lines)) {  # Adjusted probability
+        line <- readLines(con, n = 1, warn = FALSE)
+        if (length(line) == 0) break  # End of file reached
+    
+        elements <- strsplit(line, " ")[[1]]
+        word <- tolower(elements[1])
+    
+        vector <- as.numeric(elements[-1])
+        if (all(!is.na(vector)) && length(vector) == 300) {
+          sampled_words <- c(sampled_words, word)
+          sample_count <- sample_count + 1
+        }
+      } else {
+        readLines(con, n = 1, warn = FALSE)  # Skip line
+      }
+    }
+    
+    close(con)
+    
+    # Use the sampled words to generate random selections
+    sample_size <- length(sampled_words)
+    random_word1 <- sample(sampled_words, sample_size, replace = TRUE)
+    random_word2 <- sample(sampled_words, sample_size, replace = TRUE)
+
+    data_merge_random <- data.frame(
+      word1 = random_word1,
+      word2 = random_word2,
+      cosine = runif(sample_size, min = 0, max = 1),
+      group1 = "random",
+      group2 = "random",
+      comparison = "random vs random",
+      match = "random"
+    )
+
+    data_merge <- rbind(data_merge, data_merge_random)
+    
+    # Convert 'match' to a factor
+    data_merge$match <- as.factor(data_merge$match)
+    
+    # Remove duplicate word pairs based on sorted words
+    data_merge$sorted_pair <- apply(data_merge[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+    data_merge <- data_merge[!duplicated(data_merge$sorted_pair), ]
+    data_merge <- data_merge[, !(names(data_merge) %in% c("sorted_pair"))]
+
+    data_merge <- data_merge[data_merge$cosine != 1, ]
+
+    # Relevel the 'match' factor
+    data_merge$match <- factor(data_merge$match, levels = c("random", "unmatched", "matched"))
+
+    #### ANALYSES ####
+    #### Gratitude vs Indebtedness ####
+    # 1. Matched vs Nonmatched
+    comparison_matched_vs_nonmatched <- data_merge[data_merge$comparison %in% c("gratitude vs indebtedness", "gratitude vs gratitude", "indebtedness vs indebtedness", "random vs random"), ]
+    comparison_matched_vs_nonmatched <- comparison_matched_vs_nonmatched[comparison_matched_vs_nonmatched$match %in% c("matched", "unmatched"), ]
+    
+    if (nrow(comparison_matched_vs_nonmatched) > 0) {
+      # Fit the model
+      model_G_I_matched_vs_nonmatched <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_matched_vs_nonmatched)
+      
+      # Start writing output to the file
+      sink(file = paste0("model_summary_G_I_", code, "_matched_vs_nonmatched.txt"))
+      
+      # Print model summary
+      print(summary(model_G_I_matched_vs_nonmatched))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_matched_vs_nonmatched %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+      
+    # 2. Matched vs Random
+    comparison_matched_vs_random <- data_merge[data_merge$comparison %in% c("gratitude vs indebtedness", "gratitude vs gratitude", "indebtedness vs indebtedness", "random vs random"  ), ]
+    comparison_matched_vs_random <- comparison_matched_vs_random[comparison_matched_vs_random$match %in% c("matched", "random"), ]
+
+    if (nrow(comparison_matched_vs_random) > 0) {
+      model_G_I_matched_vs_random <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_matched_vs_random)
+      # Start writing output to the file
+      sink(file = paste0("model_summary_G_I_", code, "_matched_vs_random.txt"))
+      
+      # Print model summary
+      print(summary(model_G_I_matched_vs_random))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_matched_vs_random %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    # 3. Nonmatched vs Random
+    comparison_nonmatched_vs_random <- data_merge[data_merge$comparison %in% c("gratitude vs indebtedness", "gratitude vs gratitude", "indebtedness vs indebtedness","random vs random"  ), ]
+    comparison_nonmatched_vs_random <- comparison_nonmatched_vs_random[comparison_nonmatched_vs_random$match %in% c("unmatched", "random"), ]
+
+    if (nrow(comparison_nonmatched_vs_random) > 0) {
+      model_G_I_nonmatched_vs_random <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_nonmatched_vs_random)
+      sink(file = paste0("model_summary_G_I_", code, "_nonmatched_vs_random.txt"))
+      
+      # Print model summary
+      print(summary(model_G_I_nonmatched_vs_random))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_nonmatched_vs_random %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    #### Sorriness vs Indebtedness ####
+    # 1. Matched vs Nonmatched
+    comparison_matched_vs_nonmatched <- data_merge[data_merge$comparison %in% c("sorriness vs indebtedness", "sorriness vs sorriness", "indebtedness vs indebtedness","random vs random" ), ]
+    comparison_matched_vs_nonmatched <- comparison_matched_vs_nonmatched[comparison_matched_vs_nonmatched$match %in% c("matched", "unmatched"), ]
+
+    if (nrow(comparison_matched_vs_nonmatched) > 0) {
+      model_S_I_matched_vs_nonmatched <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_matched_vs_nonmatched)
+      sink(file = paste0("model_summary_S_I_", code, "_matched_vs_nonmatched.txt"))
+      
+      # Print model summary
+      print(summary(model_S_I_matched_vs_nonmatched))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_matched_vs_nonmatched %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    # 2. Matched vs Random
+    comparison_matched_vs_random <- data_merge[data_merge$comparison %in% c("sorriness vs indebtedness", "sorriness vs sorriness", "indebtedness vs indebtedness","random vs random" ), ]
+    comparison_matched_vs_random <- comparison_matched_vs_random[comparison_matched_vs_random$match %in% c("matched", "random"), ]
+
+    if (nrow(comparison_matched_vs_random) > 0) {
+      model_S_I_matched_vs_random <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_matched_vs_random)
+      sink(file = paste0("model_summary_S_I_", code, "_matched_vs_random.txt"))
+      
+      # Print model summary
+      print(summary(model_S_I_matched_vs_random))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_matched_vs_random %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    # 3. Nonmatched vs Random
+    comparison_nonmatched_vs_random <- data_merge[data_merge$comparison %in% c("sorriness vs indebtedness", "sorriness vs sorriness", "indebtedness vs indebtedness","random vs random" ), ]
+    comparison_nonmatched_vs_random <- comparison_nonmatched_vs_random[comparison_nonmatched_vs_random$match %in% c("unmatched", "random"), ]
+
+    if (nrow(comparison_nonmatched_vs_random) > 0) {
+      model_S_I_nonmatched_vs_random <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_nonmatched_vs_random)
+      sink(file = paste0("model_summary_S_I_", code, "_nonmatched_vs_random.txt"))
+      
+      # Print model summary
+      print(summary(model_S_I_nonmatched_vs_random))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_nonmatched_vs_random %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    #### Sorriness vs Gratitude ####
+    # 1. Matched vs Nonmatched
+    comparison_matched_vs_nonmatched <- data_merge[data_merge$comparison %in% c("sorriness vs gratitude", "sorriness vs sorriness", "gratitude vs gratitude","random vs random"), ]
+    comparison_matched_vs_nonmatched <- comparison_matched_vs_nonmatched[comparison_matched_vs_nonmatched$match %in% c("matched", "unmatched"), ]
+
+    if (nrow(comparison_matched_vs_nonmatched) > 0) {
+      model_S_G_matched_vs_nonmatched <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_matched_vs_nonmatched)
+      sink(file = paste0("model_summary_S_G_", code, "_matched_vs_nonmatched.txt"))
+      
+      # Print model summary
+      print(summary(model_S_G_matched_vs_nonmatched))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_matched_vs_nonmatched %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    # 2. Matched vs Random
+    comparison_matched_vs_random <- data_merge[data_merge$comparison %in% c("sorriness vs gratitude", "sorriness vs sorriness", "gratitude vs gratitude","random vs random"), ]
+    comparison_matched_vs_random <- comparison_matched_vs_random[comparison_matched_vs_random$match %in% c("matched", "random"), ]
+
+    if (nrow(comparison_matched_vs_random) > 0) {
+      model_S_G_matched_vs_random <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_matched_vs_random)
+      sink(file = paste0("model_summary_S_G_", code, "_matched_vs_random.txt"))
+      
+      # Print model summary
+      print(summary(model_S_G_matched_vs_random))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_matched_vs_random %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    # 3. Nonmatched vs Random
+    comparison_nonmatched_vs_random <- data_merge[data_merge$comparison %in% c("sorriness vs gratitude", "sorriness vs sorriness", "gratitude vs gratitude","random vs random"), ]
+    comparison_nonmatched_vs_random <- comparison_nonmatched_vs_random[comparison_nonmatched_vs_random$match %in% c("unmatched", "random"), ]
+
+    if (nrow(comparison_nonmatched_vs_random) > 0) {
+      model_S_G_nonmatched_vs_random <- lmer(cosine ~ match + (1|group1) + (1|group2), data = comparison_nonmatched_vs_random)
+      sink(file = paste0("model_summary_S_G_", code, "_nonmatched_vs_random.txt"))
+      
+      # Print model summary
+      print(summary(model_S_G_nonmatched_vs_random))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_nonmatched_vs_random %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+  }, error = function(e) {
+    message(paste("Error in processing file:", file))
+    message("Error message:", e$message)
+  })
+}
+```
+
+### No random factor ; smaller random group
+```{r}
+# Load necessary libraries
+library(readxl)
+library(reshape2)
+library(lme4)
+library(ggplot2)
+library(dplyr)
+
+# Define the directory containing your CSV files
+directory <- "~/Data/"
+
+# Get the list of files
+file_list <- list.files(directory, pattern = "cos_.*\\.csv$", full.names = TRUE)
+
+# Create a named vector for language code to full name mapping
+language_map <- list(
+    af= "afrikaans",
+    sq= "albanian",
+    als= "alemannic",
+    am= "amharic",
+    ar= "arabic",
+    an= "aragonese",
+    hy= "armenian",
+    as= "assamese",
+    ast= "asturian",
+    az= "azerbaijani",
+    ba= "bashkir",
+    eu= "basque",
+    bar= "bavarian",
+    be= "belarusian",
+    bn= "bengali",
+    bh= "bihari",
+    bpy= "bishnupriya manipuri",
+    bs= "bosnian",
+    br= "breton",
+    bg= "bulgarian",
+    my= "burmese",
+    ca= "catalan",
+    ceb= "cebuano",
+    bcl= "central bicolano",
+    ce= "chechen",
+    zh= "chinese",
+    cv= "chuvash",
+    co= "corsican",
+    hr= "croatian",
+    cs= "czech",
+    da= "danish",
+    dv= "divehi",
+    nl= "dutch",
+    pa= "eastern punjabi",
+    arz= "egyptian arabic",
+    eml= "emilian-romagnol",
+    en= "english",
+    myv= "erzya",
+    eo= "esperanto",
+    et= "estonian",
+    hif= "fiji hindi",
+    fi= "finnish",
+    fr= "french",
+    gl= "galician",
+    ka= "georgian",
+    de= "german",
+    gom= "goan konkani",
+    el= "greek",
+    gu= "gujarati",
+    ht= "haitian",
+    he= "hebrew",
+    mrj= "hill mari",
+    hi= "hindi",
+    hu= "hungarian",
+    is= "icelandic",
+    io= "ido",
+    ilo= "ilokano",
+    id= "indonesian",
+    ia= "interlingua",
+    ga= "irish",
+    it= "italian",
+    ja= "japanese",
+    jv= "javanese",
+    kn= "kannada",
+    pam= "kapampangan",
+    kk= "kazakh",
+    km= "khmer",
+    ky= "kirghiz",
+    ko= "korean",
+    ku= "kurdish (kurmanji)",
+    ckb= "kurdish (sorani)",
+    la= "latin",
+    lv= "latvian",
+    li= "limburgish",
+    lt= "lithuanian",
+    lmo= "lombard",
+    nds= "low saxon",
+    lb= "luxembourgish",
+    mk= "macedonian",
+    mai= "maithili",
+    mg= "malagasy",
+    ms= "malay",
+    ml= "malayalam",
+    mt= "maltese",
+    gv= "manx",
+    mr= "marathi",
+    mzn= "mazandarani",
+    mhr= "meadow mari",
+    min= "minangkabau",
+    xmf= "mingrelian",
+    mwl= "mirandese",
+    mn= "mongolian",
+    nah= "nahuatl",
+    nap= "neapolitan",
+    ne= "nepali",
+    new= "newar",
+    frr= "north frisian",
+    nso= "northern sotho",
+    no= "norwegian (bokmål)",
+    nn= "norwegian (nynorsk)",
+    oc= "occitan",
+    or= "oriya",
+    os= "ossetian",
+    pfl= "palatinate german",
+    ps= "pashto",
+    fa= "persian",
+    pms= "piedmontese",
+    pl= "polish",
+    pt= "portuguese",
+    qu= "quechua",
+    ro= "romanian",
+    rm= "romansh",
+    ru= "russian",
+    sah= "sakha",
+    sa= "sanskrit",
+    sc= "sardinian",
+    sco= "scots",
+    gd= "scottish gaelic",
+    sr= "serbian",
+    sh= "serbo-croatian",
+    scn= "sicilian",
+    sd= "sindhi",
+    si= "sinhalese",
+    sk= "slovak",
+    sl= "slovenian",
+    so= "somali",
+    azb= "southern azerbaijani",
+    es= "spanish",
+    su= "sundanese",
+    sw= "swahili",
+    sv= "swedish",
+    tl= "tagalog",
+    tg= "tajik",
+    ta= "tamil",
+    tt= "tatar",
+    te= "telugu",
+    th= "thai",
+    bo= "tibetan",
+    tr= "turkish",
+    tk= "turkmen",
+    uk= "ukrainian",
+    hsb= "upper sorbian",
+    ur= "urdu",
+    ug= "uyghur",
+    uz= "uzbek",
+    vec= "venetian",
+    vi= "vietnamese",
+    vo= "volapük",
+    wa= "walloon",
+    war= "waray",
+    cy= "welsh",
+    vls= "west flemish",
+    fy= "west frisian",
+    pnb= "western punjabi",
+    yi= "yiddish",
+    yo= "yoruba",
+    diq= "zazaki",
+    zea= "zeelandic"
+)
+
+# Read in the wordlist
+wordlist <- readxl::read_xlsx("~/Data/Gratitude_Indebtedness Wordlist - 241017.xlsx")
+
+# Loop through each file
+for (file in file_list) {
+  tryCatch({
+    # Extract the language code from the filename
+    code <- sub("cos_(.*)\\.csv", "\\1", basename(file))
+    
+    # Lookup the full language name
+    language <- language_map[[code]]
+    
+    # Read in the CSV file
+    data <- read.csv(file)
+    
+    # Add a 'word' column to the data
+    colnames(data)[1] <- "word"
+    
+    # Reshape data to long format
+    data_long <- reshape2::melt(data, id.vars = "word")
+    
+    # Filter the wordlist for the current language
+    roots <- wordlist[wordlist$language == language, c("word only", "emotion group")]
+    
+    # Merge data with the wordlist for both word1 and word2
+    data_merge <- merge(data_long, roots, by.x = "word", by.y = "word only")
+    data_merge <- merge(data_merge, roots, by.x = "variable", by.y = "word only")
+    
+    # Rename columns
+    colnames(data_merge) <- c("word1", "word2", "cosine", "group2", "group1")
+    
+    # Add comparison columns for pairwise group testing
+    data_merge$comparison <- paste(data_merge$group1, "vs", data_merge$group2)
+    
+    # Assign 'matched' and 'unmatched' based on comparison
+    data_merge$match <- ifelse(
+      data_merge$comparison %in% c("gratitude vs gratitude", "sorriness vs sorriness", "indebtedness vs indebtedness"),
+      "matched",  # Code as 'matched'
+      ifelse(
+        data_merge$comparison %in% c("sorriness vs gratitude", "sorriness vs indebtedness", "indebtedness vs sorriness", 
+                                     "indebtedness vs gratitude", "gratitude vs sorriness", "gratitude vs indebtedness"),
+        "unmatched",  # Code as 'unmatched'
+        NA  # In case there are any other values that don't match these conditions
+      )
+    )
+    
+    # --- NEW SECTION: Sample Random Words from the Language's Embedding ---
+    embedding_file <- paste0("~/Data/cc.", code, ".300.vec")  # Adjust path if needed
+
+    # Get total number of lines in the file (count lines first)
+    con <- file(embedding_file, "r")
+    total_lines <- 0
+    while (length(readLines(con, n = 1, warn = FALSE)) > 0) {
+      total_lines <- total_lines + 1
+    }
+    close(con)
+    
+    # Re-open the file for actual sampling
+    con <- file(embedding_file, "r")
+    set.seed(123)  # Set seed for reproducibility
+    lines_to_sample <- 100  # Target number of words to sample
+    sampled_words <- character()
+    readLines(con, n = 1)  # Ignore metadata
+    
+    sample_count <- 0
+    line_count <- 0
+    
+    # Sample based on the actual total number of lines
+    while (sample_count < lines_to_sample) {
+      line_count <- line_count + 1
+      if (line_count %% 1000 == 0) cat("Processed", line_count, "lines so far\n")
+    
+      if (runif(1) < (lines_to_sample / total_lines)) {  # Adjusted probability
+        line <- readLines(con, n = 1, warn = FALSE)
+        if (length(line) == 0) break  # End of file reached
+    
+        elements <- strsplit(line, " ")[[1]]
+        word <- tolower(elements[1])
+    
+        vector <- as.numeric(elements[-1])
+        if (all(!is.na(vector)) && length(vector) == 300) {
+          sampled_words <- c(sampled_words, word)
+          sample_count <- sample_count + 1
+        }
+      } else {
+        readLines(con, n = 1, warn = FALSE)  # Skip line
+      }
+    }
+    
+    close(con)
+    
+    # Use the sampled words to generate random selections
+    sample_size <- length(sampled_words)
+    random_word1 <- sample(sampled_words, sample_size, replace = TRUE)
+    random_word2 <- sample(sampled_words, sample_size, replace = TRUE)
+
+    data_merge_random <- data.frame(
+      word1 = random_word1,
+      word2 = random_word2,
+      cosine = runif(sample_size, min = 0, max = 1),
+      group1 = "random",
+      group2 = "random",
+      comparison = "random vs random",
+      match = "random"
+    )
+
+    data_merge <- rbind(data_merge, data_merge_random)
+    
+    # Convert 'match' to a factor
+    data_merge$match <- as.factor(data_merge$match)
+    
+    # Remove duplicate word pairs based on sorted words
+    data_merge$sorted_pair <- apply(data_merge[, c("word1", "word2")], 1, function(x) paste(sort(x), collapse = " + "))
+    data_merge <- data_merge[!duplicated(data_merge$sorted_pair), ]
+    data_merge <- data_merge[, !(names(data_merge) %in% c("sorted_pair"))]
+
+    data_merge <- data_merge[data_merge$cosine != 1, ]
+
+    # Relevel the 'match' factor
+    data_merge$match <- factor(data_merge$match, levels = c("random", "unmatched", "matched"))
+
+    #### ANALYSES ####
+    #### Gratitude vs Indebtedness ####
+    # 1. Matched vs Nonmatched
+    comparison_matched_vs_nonmatched <- data_merge[data_merge$comparison %in% c("gratitude vs indebtedness", "gratitude vs gratitude", "indebtedness vs indebtedness", "random vs random"), ]
+    comparison_matched_vs_nonmatched <- comparison_matched_vs_nonmatched[comparison_matched_vs_nonmatched$match %in% c("matched", "unmatched"), ]
+    
+    if (nrow(comparison_matched_vs_nonmatched) > 0) {
+      # Fit the model
+      model_G_I_matched_vs_nonmatched <- lm(cosine ~ match, data = comparison_matched_vs_nonmatched)
+      
+      # Start writing output to the file
+      sink(file = paste0("model_summary_G_I_", code, "_matched_vs_nonmatched_smallran_nolv2.txt"))
+      
+      # Print model summary
+      print(summary(model_G_I_matched_vs_nonmatched))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_matched_vs_nonmatched %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+      
+    # 2. Matched vs Random
+    comparison_matched_vs_random <- data_merge[data_merge$comparison %in% c("gratitude vs indebtedness", "gratitude vs gratitude", "indebtedness vs indebtedness", "random vs random"  ), ]
+    comparison_matched_vs_random <- comparison_matched_vs_random[comparison_matched_vs_random$match %in% c("matched", "random"), ]
+
+    if (nrow(comparison_matched_vs_random) > 0) {
+      model_G_I_matched_vs_random <- lm(cosine ~ match, data = comparison_matched_vs_random)
+      # Start writing output to the file
+      sink(file = paste0("model_summary_G_I_", code, "_matched_vs_random_smallran_nolv2.txt"))
+      
+      # Print model summary
+      print(summary(model_G_I_matched_vs_random))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_matched_vs_random %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    # 3. Nonmatched vs Random
+    comparison_nonmatched_vs_random <- data_merge[data_merge$comparison %in% c("gratitude vs indebtedness", "gratitude vs gratitude", "indebtedness vs indebtedness","random vs random"  ), ]
+    comparison_nonmatched_vs_random <- comparison_nonmatched_vs_random[comparison_nonmatched_vs_random$match %in% c("unmatched", "random"), ]
+
+    if (nrow(comparison_nonmatched_vs_random) > 0) {
+      model_G_I_nonmatched_vs_random <- lm(cosine ~ match, data = comparison_nonmatched_vs_random)
+      sink(file = paste0("model_summary_G_I_", code, "_nonmatched_vs_random_smallran_nolv2.txt"))
+      
+      # Print model summary
+      print(summary(model_G_I_nonmatched_vs_random))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_nonmatched_vs_random %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    #### Sorriness vs Indebtedness ####
+    # 1. Matched vs Nonmatched
+    comparison_matched_vs_nonmatched <- data_merge[data_merge$comparison %in% c("sorriness vs indebtedness", "sorriness vs sorriness", "indebtedness vs indebtedness","random vs random" ), ]
+    comparison_matched_vs_nonmatched <- comparison_matched_vs_nonmatched[comparison_matched_vs_nonmatched$match %in% c("matched", "unmatched"), ]
+
+    if (nrow(comparison_matched_vs_nonmatched) > 0) {
+      model_S_I_matched_vs_nonmatched <- lm(cosine ~ match, data = comparison_matched_vs_nonmatched)
+      sink(file = paste0("model_summary_S_I_", code, "_matched_vs_nonmatched_smallran_nolv2.txt"))
+      
+      # Print model summary
+      print(summary(model_S_I_matched_vs_nonmatched))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_matched_vs_nonmatched %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    # 2. Matched vs Random
+    comparison_matched_vs_random <- data_merge[data_merge$comparison %in% c("sorriness vs indebtedness", "sorriness vs sorriness", "indebtedness vs indebtedness","random vs random" ), ]
+    comparison_matched_vs_random <- comparison_matched_vs_random[comparison_matched_vs_random$match %in% c("matched", "random"), ]
+
+    if (nrow(comparison_matched_vs_random) > 0) {
+      model_S_I_matched_vs_random <- lm(cosine ~ match, data = comparison_matched_vs_random)
+      sink(file = paste0("model_summary_S_I_", code, "_matched_vs_random_smallran_nolv2.txt"))
+      
+      # Print model summary
+      print(summary(model_S_I_matched_vs_random))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_matched_vs_random %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    # 3. Nonmatched vs Random
+    comparison_nonmatched_vs_random <- data_merge[data_merge$comparison %in% c("sorriness vs indebtedness", "sorriness vs sorriness", "indebtedness vs indebtedness","random vs random" ), ]
+    comparison_nonmatched_vs_random <- comparison_nonmatched_vs_random[comparison_nonmatched_vs_random$match %in% c("unmatched", "random"), ]
+
+    if (nrow(comparison_nonmatched_vs_random) > 0) {
+      model_S_I_nonmatched_vs_random <- lm(cosine ~ match, data = comparison_nonmatched_vs_random)
+      sink(file = paste0("model_summary_S_I_", code, "_nonmatched_vs_random_smallran_nolv2.txt"))
+      
+      # Print model summary
+      print(summary(model_S_I_nonmatched_vs_random))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_nonmatched_vs_random %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    #### Sorriness vs Gratitude ####
+    # 1. Matched vs Nonmatched
+    comparison_matched_vs_nonmatched <- data_merge[data_merge$comparison %in% c("sorriness vs gratitude", "sorriness vs sorriness", "gratitude vs gratitude","random vs random"), ]
+    comparison_matched_vs_nonmatched <- comparison_matched_vs_nonmatched[comparison_matched_vs_nonmatched$match %in% c("matched", "unmatched"), ]
+
+    if (nrow(comparison_matched_vs_nonmatched) > 0) {
+      model_S_G_matched_vs_nonmatched <- lm(cosine ~ match, data = comparison_matched_vs_nonmatched)
+      sink(file = paste0("model_summary_S_G_", code, "_matched_vs_nonmatched_smallran_nolv2.txt"))
+      
+      # Print model summary
+      print(summary(model_S_G_matched_vs_nonmatched))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_matched_vs_nonmatched %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    # 2. Matched vs Random
+    comparison_matched_vs_random <- data_merge[data_merge$comparison %in% c("sorriness vs gratitude", "sorriness vs sorriness", "gratitude vs gratitude","random vs random"), ]
+    comparison_matched_vs_random <- comparison_matched_vs_random[comparison_matched_vs_random$match %in% c("matched", "random"), ]
+
+    if (nrow(comparison_matched_vs_random) > 0) {
+      model_S_G_matched_vs_random <- lm(cosine ~ match, data = comparison_matched_vs_random)
+      sink(file = paste0("model_summary_S_G_", code, "_matched_vs_random_smallran_nolv2.txt"))
+      
+      # Print model summary
+      print(summary(model_S_G_matched_vs_random))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_matched_vs_random %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+    # 3. Nonmatched vs Random
+    comparison_nonmatched_vs_random <- data_merge[data_merge$comparison %in% c("sorriness vs gratitude", "sorriness vs sorriness", "gratitude vs gratitude","random vs random"), ]
+    comparison_nonmatched_vs_random <- comparison_nonmatched_vs_random[comparison_nonmatched_vs_random$match %in% c("unmatched", "random"), ]
+
+    if (nrow(comparison_nonmatched_vs_random) > 0) {
+      model_S_G_nonmatched_vs_random <- lm(cosine ~ match, data = comparison_nonmatched_vs_random)
+      sink(file = paste0("model_summary_S_G_", code, "_nonmatched_vs_random_smallran_nolv2.txt"))
+      
+      # Print model summary
+      print(summary(model_S_G_nonmatched_vs_random))
+      
+      # Calculate summary statistics
+      summary_stats <- comparison_nonmatched_vs_random %>%
+        group_by(match) %>%
+        summarise(
+          N = n(), 
+          mean_cosine = mean(cosine, na.rm = TRUE), 
+          sd_cosine = sd(cosine, na.rm = TRUE), 
+          se_cosine = sd_cosine / sqrt(N)
+        )
+      
+      # Convert the summary_stats tibble to formatted text
+      formatted_summary <- format(summary_stats)
+      
+      # Print the formatted summary stats
+      writeLines(formatted_summary)
+      
+      # Stop writing output to the file
+      sink()
+    }
+
+  }, error = function(e) {
+    message(paste("Error in processing file:", file))
+    message("Error message:", e$message)
+  })
+}
+```
+
+
+#### record 
+
+```{r}
+# Load necessary libraries
+library(readr)
+library(openxlsx)
+
+files <- list.files( pattern = "^model_summary_.*smallran_nolv2\\.txt$", full.names = TRUE)
+# Initialize an empty list to store results
+results <- list()
+
+# Loop through each file
+for (file in files) {
+  
+  # Read the file into a dataframe with fill = TRUE to handle varying row lengths
+  data <- read.table(file, header = FALSE, stringsAsFactors = FALSE, fill = TRUE)
+  
+  # Find the row that starts with "matchmatched" or "matchunmatched"
+  match_row_idx <- grep("^(matchmatched|matchunmatched)", data[,1])
+  
+  # Extract the matched row or return NA if no match is found
+  if (length(match_row_idx) > 0) {
+    matched_row <- data[match_row_idx[1], , drop = FALSE]
+  } else {
+    matched_row <- data.frame(V1 = NA)  # No matching row found
+  }
+  
+  # Get the last two rows
+  last_two_rows <- tail(data, 2)
+  
+  # Create a temporary dataframe with the file name, matched row, and last two rows
+  temp_df <- data.frame(
+    file_name = basename(file),
+    matched_row = paste(matched_row, collapse = " "),
+    last_two_rows = paste(last_two_rows, collapse = " ")
+  )
+  
+  # Append to results list
+  results[[length(results) + 1]] <- temp_df
+}
+
+# Combine all results into a single dataframe
+final_df <- do.call(rbind, results)
+
+# Write the final dataframe to an Excel file
+write.xlsx(final_df, "your_output_file.xlsx")
+```
+
+
+
+#### Random - plotting
+
+```{r}
+# Load necessary packages
+library(readxl)
+library(metafor)
+
+# Load your data
+df <- read_xlsx("your_output_file.xlsx")
+
+# Remove rows where samplesize is less than 50
+df <- subset(df, samplesize >= 50)
+
+# Subset the data for 'XXX' pairs
+df_subset <- subset(df, pair == "grat_sorry")
+
+# Step 1: select
+df_subset <- df_subset %>%
+  filter(comparison == "match_unmatch")
+
+# Calculate the variance of Cohen's d (vi) for the subset
+df_subset$vi <- 1 / df_subset$samplesize + (df_subset$cohend^2) / (2 * df_subset$samplesize)
+
+# Sort the effect sizes in ascending order
+df_subset <- df_subset[order(df_subset$cohend, decreasing = FALSE), ]
+
+model <- metagen(
+  TE = df_subset$cohend,                    # Use already calculated Cohen's d values
+  studlab = df_subset$language_full,         # Labels for each study (e.g., language)
+  seTE = sqrt(df_subset$vi),                # Standard error of effect size (from the calculated variance)
+  data = df_subset,                         # Subsetted dataset with 'gratitude_indebtedness' pairs
+  sm = "SMD",                               # Type of input data (Cohen's d - Standardized Mean Difference)
+  subset = df_subset$comparison == "match_unmatch", # Subset for 'match_unmatch'
+  fixed = FALSE,                            # No fixed-effect model
+  random = TRUE,                            # Random-effects model
+  method.tau = "REML",                      # Estimate between-study variance τ2 using REML
+  hakn = TRUE                               # Hartung-Knapp adjustment
+)
+
+# Define the file output and size (e.g., 12x8 inches, 300 dpi)
+png(filename = "forest_plot_grat_indeb.png", width = 12, height = 50, units = "in", res = 300)
+
+# Create a forest plot
+forest(model, 
+       xlab = "Effect Size (Cohen's d)", 
+       alim = c(0, 7),  # Adjust axis limits as needed
+       mlab = "Random-Effects Model")
+
+# Close the file output to save the image
+dev.off()
+```
+
+```{r}
+# Load required libraries
+library(metafor)
+library(ggplot2)
+
+# Sort the data by effect sizes
+df_subset <- df_subset[order(df$cohend, decreasing = FALSE), ]
+
+# Step 1: select
+df_subset <- df_subset %>%
+  filter(comparison == "match_unmatch")
+
+
+# Run the meta-analysis without subsetting to include all comparison levels
+model <- metagen(
+  TE = df_subset$cohend,                    # Use already calculated Cohen's d values
+  studlab = df_subset$language_full,         # Labels for each study (e.g., language)
+  seTE = sqrt(df_subset$vi),                # Standard error of effect size (from the calculated variance)
+  data = df_subset,                         # Subsetted dataset with 'gratitude_indebtedness' pairs
+  sm = "SMD",                               # Type of input data (Cohen's d - Standardized Mean Difference)
+  fixed = FALSE,                            # No fixed-effect model
+  random = TRUE,                            # Random-effects model
+  method.tau = "REML",                      # Estimate between-study variance τ2 using REML
+  hakn = TRUE                               # Hartung-Knapp adjustment
+)
+
+# Create the forest plot with ggplot2
+plot <- ggplot(df_subset, aes(x = reorder(language_full, cohend), y = cohend, color = comparison)) +
+  geom_point(size = 3) + # Plot effect sizes
+  geom_errorbar(aes(ymin = cohend - 1.96 * sqrt(vi), ymax = cohend + 1.96 * sqrt(vi)), width = 0.2) + # Confidence intervals
+  coord_flip() + # Flip coordinates for a better visual (forest plot style)
+  labs(x = "Study", y = "Effect Size (Cohen's d)", title = "Meta-Analysis of Cohen's d") +
+  theme_minimal() + # Use a minimal theme
+  scale_color_manual(values = c("steelblue")) # Assign custom colors
+
+# Save the plot using ggsave
+ggsave("meta_analysis_forest_plot_match_unmatch.png", plot = plot, width = 10, height = 6)
+```
+table(df_subset$comparison)
+
+### Mean
+
+```{r}
+
+# Load necessary libraries
+library(readxl)  # For reading Excel files
+library(ggplot2)  # For plotting
+library(dplyr)
+
+# Read the Excel file (replace with your file path)
+df_mean <- read_xlsx("your_output_file.xlsx", sheet = 2)
+
+# Step 1: select
+# Combine conditions in a single filter call
+df_mean <- df_mean %>%
+  filter(pair == "grat_sorry" & actual_similarity_n > 9)
+
+# Sort the data by the Mean column in ascending order
+df_mean <- df_mean[order(df_mean$actual_similarity_mean), ]
+
+# Calculate 95% Confidence Intervals
+df_mean$Lower_CI <- df_mean$actual_similarity_mean - 1.96 * df_mean$actual_similarity_se
+df_mean$Upper_CI <- df_mean$actual_similarity_mean + 1.96 * df_mean$actual_similarity_se
+
+# Define the RGB color (0, 32, 96)
+custom_color <- rgb(0, 32, 96, maxColorValue = 255)
+
+# Create the forest plot, coloring by 'pair' and applying jitter to reduce overlap
+ggplot(df_mean, aes(x = actual_similarity_mean, y = reorder(Language, actual_similarity_mean))) +
+  geom_point(position = position_jitter(width = 0.02, height = 0), size = 3, color = custom_color) +  # Dots in RGB color
+  geom_errorbarh(aes(xmin = Lower_CI, xmax = Upper_CI), height = 0.2, color = custom_color) +  # Error bars in RGB color
+  geom_vline(xintercept = 0, linetype = "dashed", color = custom_color) +  # Vertical line in RGB color
+  theme_bw() +  # Set a white background
+  xlab("Cosine Similarity") +
+  ylab("Languages") +
+  ggtitle("Forest Plot of Cosine Similarities Across Languages") +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", color = "black"),  # Title in black
+    axis.title.x = element_text(size = 14, color = "black"),  # X-axis label in black
+    axis.title.y = element_text(size = 14, color = "black"),  # Y-axis label in black
+    axis.text = element_text(size = 12, color = "black")  # Axis text in black
+  )
+
+# Save the plot with 300 DPI resolution
+ggsave("forest_plot_mean.png", height = 8, width = 10, units = "in", dpi = 300)
+
+
+```
+
+head(df_mean)
+
+
+```{r}
+
+
+# Load necessary libraries
+library(readxl)  # For reading Excel files
+library(ggplot2)  # For plotting
+library(dplyr)  # For data manipulation
+
+# Read the Excel file (replace with your file path)
+df_mean <- read_xlsx("your_output_file.xlsx", sheet = 2)
+
+# Step 1: Remove rows where the pair column is "random"
+df_mean <- df_mean %>%
+  filter(df_mean[,1] == "grat_sorry")
+
+# Step 2: Calculate SE of the Random SD
+df_mean <- df_mean %>%
+  mutate(se_random_sd = random_similiarity_sd / sqrt(2 * (random_similiarity_n - 1)))
+
+colnames(df_mean)
+
+# Step 3: Calculate Z-Score
+df_mean <- df_mean %>%
+  mutate(ratio_z = actual_similarity_mean / actual_similarity_sd)
+
+# Step 4: Calculate SE of the Z-Score using error propagation
+df_mean <- df_mean %>%
+  mutate(se_z = ratio_z * sqrt((actual_similarity_se / actual_similarity_mean)^2 +
+                               (se_random_sd / random_similiarity_sd)^2))
+
+# Step 5: Calculate the confidence intervals for the Z-scores
+df_mean <- df_mean %>%
+  mutate(CI_lower = ratio_z - 1.96 * se_z,
+         CI_upper = ratio_z + 1.96 * se_z)
+
+# Step 6: Reorder the data by ratio_z
+df_mean <- df_mean %>%
+  arrange(desc(ratio_z))
+
+# Step 7: Create a forest plot using ggplot2 with reordered Languages
+ggplot(df_mean, aes(x = ratio_z, y = reorder(Language...18, -ratio_z), color = pair...1)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(xmin = CI_lower, xmax = CI_upper), width = 0.2) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +  # Reference line at Z = 0
+  labs(title = "Forest Plot of Z-Scores with 95% Confidence Intervals",
+       x = "Z-Score (Actual Similarity / Random SD)",
+       y = "Language") +
+  theme_minimal()
+
+```
+
