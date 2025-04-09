@@ -1,0 +1,112 @@
+---
+title: "bert"
+author: "Reilly Amera"
+date: "2025-04-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(reticulate)
+library(readxl)
+
+# Load the Excel file
+df <- read_excel("wordlist.xlsx")
+
+# Remove rows where text is NA or empty
+df <- df[!is.na(df$`word only-reilly`) & df$`word only-reilly` != "", ]
+
+# Rename and prep
+df <- df[, c("language", "word only-reilly")]
+names(df) <- c("language", "text")
+df$text <- as.character(df$text)
+
+# Send to Python
+py$df <- r_to_py(df)
+
+# Convert to Python
+use_virtualenv("r-reticulate", required = TRUE)  # Or use_condaenv()
+py$df <- r_to_py(df)
+
+```
+ 
+```{r}
+py_run_string("
+from transformers import AutoTokenizer, AutoModel
+import torch
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Load BERT model
+tokenizer = AutoTokenizer.from_pretrained('google-bert/bert-base-multilingual-uncased')
+model = AutoModel.from_pretrained('google-bert/bert-base-multilingual-uncased')
+
+# Generate sentence embedding from CLS token
+def get_sentence_embedding(text):
+    inputs = tokenizer(text, return_tensors='pt', truncation=True, padding=True)
+    with torch.no_grad():
+        outputs = model(**inputs)
+    return outputs.last_hidden_state[:, 0, :].squeeze().numpy()
+
+# Embed all texts
+def compute_embeddings(df):
+    df['embedding'] = df['text'].apply(get_sentence_embedding)
+    return df
+
+# Group by language and compute cosine similarity matrices
+def cosine_similarity_by_language(df):
+    results = {}
+    for lang in df['language'].unique():
+        subset = df[df['language'] == lang]
+        if len(subset) > 1:
+            embs = list(subset['embedding'])
+            sim_matrix = cosine_similarity(embs)
+            results[lang] = sim_matrix
+    return results
+")
+
+# Run the embedding and similarity pipeline
+py$df <- py$compute_embeddings(py$df)
+similarities <- py$cosine_similarity_by_language(py$df)
+
+# Example: view matrix for Afrikaans
+similarities$afrikaans
+
+```
+
+```{r}
+# CSVs per langugae
+
+py_run_string("
+import os
+import pandas as pd
+
+# Ensure folder exists
+os.makedirs('similarity_csvs', exist_ok=True)
+
+# Save each cosine similarity matrix with text labels
+for lang in df['language'].unique():
+    subset = df[df['language'] == lang].reset_index(drop=True)
+    
+    if len(subset) > 1:
+        texts = list(subset['text'])
+        sim_matrix = cosine_similarity([emb for emb in subset['embedding']])
+        df_sim = pd.DataFrame(sim_matrix, index=texts, columns=texts)
+        
+        # Save to CSV
+        safe_lang = lang.replace('/', '_')  # In case of problematic characters
+        df_sim.to_csv(f'similarity_csvs/cos_{safe_lang}.csv')
+")
+
+```
+
+```{r}
+en <- read.csv("similarity_csvs/cos_english.csv", row.names = 1)
+es <- read.csv("similarity_csvs/cos_spanish.csv")
+ko <- read.csv("similarity_csvs/cos_korean.csv", row.names = 1)
+ja <- read.csv("similarity_csvs/cos_japanese.csv")
+```
+
